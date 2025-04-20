@@ -1,0 +1,122 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "n8n Declarative Test Schema",
+  "description": "Schema for n8n declarative test files",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["name", "workflows"],
+    "properties": {
+      "name": {
+        "type": "string",
+        "description": "Name of the test"
+      },
+      "workflows": {
+        "type": "array",
+        "description": "Workflows to create for the test",
+        "minItems": 1,
+        "items": {
+          "type": "object",
+          "required": ["templateName", "name"],
+          "properties": {
+            "templateName": {
+              "type": "string",
+              "description": "Name of the workflow template to use"
+            },
+            "name": {
+              "type": "string",
+              "description": "Name for the created workflow"
+            },
+            "isPrimary": {
+              "type": "boolean",
+              "description": "Whether this is the primary workflow for the test",
+              "default": false
+            },
+            "settings": {
+              "type": "object",
+              "description": "Settings to override in the template"
+            },
+            "activate": {
+              "type": "boolean",
+              "description": "Whether to activate the workflow",
+              "default": false
+            }
+          }
+        }
+      },
+      "credentials": {
+        "type": "array",
+        "description": "Credentials to create for the test",
+        "items": {
+          "type": "object",
+          "required": ["name", "type", "data"],
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Name of the credential"
+            },
+            "type": {
+              "type": "string",
+              "description": "Type of the credential"
+            },
+            "data": {
+              "type": "object",
+              "description": "Credential data"
+            },
+            "usedByWorkflow": {
+              "type": "string",
+              "description": "Name of the workflow that uses this credential"
+            },
+            "usedByNode": {
+              "type": "string",
+              "description": "Name of the node that uses this credential"
+            }
+          }
+        }
+      },
+      "input": {
+        "type": "object",
+        "description": "Input data for the test"
+      },
+      "expectedOutput": {
+        "type": "object",
+        "description": "Expected output from the test"
+      },
+      "assertions": {
+        "type": "array",
+        "description": "Assertions to run against the output",
+        "items": {
+          "type": "object",
+          "required": ["description", "assertion"],
+          "properties": {
+            "description": {
+              "type": "string",
+              "description": "Description of the assertion"
+            },
+            "assertion": {
+              "type": "string",
+              "description": "Assertion expression to evaluate"
+            }
+          }
+        }
+      },
+      "tags": {
+        "type": "array",
+        "description": "Tags for the test",
+        "items": {
+          "type": "string"
+        }
+      },
+      "skip": {
+        "type": "boolean",
+        "description": "Whether to skip this test",
+        "default": false
+      },
+      "timeout": {
+        "type": "integer",
+        "description": "Timeout for the test in milliseconds",
+        "minimum": 0
+      }
+    }
+  }
+}

@@ -1,0 +1,65 @@
+[
+  {
+    "name": "Simple HTTP Workflow Test",
+    "workflows": [
+      {
+        "templateName": "http_request",
+        "name": "Test HTTP Workflow",
+        "isPrimary": true,
+        "settings": {
+          "saveExecutionProgress": true
+        }
+      }
+    ],
+    "input": {
+      "url": "https://jsonplaceholder.typicode.com/todos/1"
+    },
+    "assertions": [
+      {
+        "description": "Response should be successful",
+        "assertion": "result && result.success === true"
+      },
+      {
+        "description": "Response should contain data",
+        "assertion": "result && result.data && typeof result.data === 'object'"
+      },
+      {
+        "description": "Response should have the correct title",
+        "assertion": "result && result.data && result.data.title && typeof result.data.title === 'string'"
+      }
+    ],
+    "tags": ["http", "example"]
+  },
+  {
+    "name": "Data Transformation Test",
+    "workflows": [
+      {
+        "templateName": "data_transform",
+        "name": "Test Transform Workflow",
+        "isPrimary": true
+      }
+    ],
+    "input": {
+      "data": {
+        "name": "John Doe",
+        "email": "john.doe@example.com",
+        "age": 30
+      }
+    },
+    "assertions": [
+      {
+        "description": "Output should contain transformed data",
+        "assertion": "result && result.data"
+      },
+      {
+        "description": "Name should be uppercase",
+        "assertion": "result && result.data && result.data.name === 'JOHN DOE'"
+      },
+      {
+        "description": "Age should be incremented",
+        "assertion": "result && result.data && result.data.age === 31"
+      }
+    ],
+    "tags": ["transform", "example"]
+  }
+]

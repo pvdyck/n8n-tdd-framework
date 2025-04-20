@@ -1,0 +1,32 @@
+{
+  "name": "Data Transform Template",
+  "nodes": [
+    {
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "position": [100, 300],
+      "parameters": {}
+    },
+    {
+      "name": "Function",
+      "type": "n8n-nodes-base.function",
+      "position": [300, 300],
+      "parameters": {
+        "functionCode": "// Get the input data\nconst inputData = $input.data || {};\n\n// Transform the data\nconst transformedData = {\n  name: inputData.name ? inputData.name.toUpperCase() : '',\n  email: inputData.email,\n  age: inputData.age ? inputData.age + 1 : 0\n};\n\n// Return the transformed data\nreturn {\n  json: {\n    success: true,\n    data: transformedData\n  }\n};"
+      }
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Function",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

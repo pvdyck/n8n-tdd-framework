@@ -1,0 +1,63 @@
+{
+  "name": "HTTP Request Template",
+  "nodes": [
+    {
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "position": [100, 300],
+      "parameters": {}
+    },
+    {
+      "name": "HTTP Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [300, 300],
+      "parameters": {
+        "url": "={{ $input.url || 'https://jsonplaceholder.typicode.com/todos/1' }}",
+        "method": "GET",
+        "authentication": "none",
+        "responseFormat": "json"
+      }
+    },
+    {
+      "name": "Set",
+      "type": "n8n-nodes-base.set",
+      "position": [500, 300],
+      "parameters": {
+        "values": [
+          {
+            "name": "success",
+            "value": "true"
+          },
+          {
+            "name": "data",
+            "value": "={{ $json }}"
+          }
+        ]
+      }
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Set",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
