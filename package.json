@@ -1,6 +1,6 @@
 {
   "name": "n8n-tdd-framework",
-  "version": "0.9.0",
+  "version": "0.12.0",
   "description": "A Test-Driven Development framework for n8n workflows",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -19,9 +19,14 @@
     "prebuild": "npm run clean",
     "prepare": "npm run build",
     "test": "jest --config jest.config.js",
+    "test:coverage": "jest --config jest.config.js --coverage",
+    "test:coverage:check": "node dist/testing/coverage/utils/thresholdChecker.js",
+    "test:coverage:dashboard": "node dist/testing/coverage/dashboard/dashboardGenerator.js",
+    "test:coverage:dashboard:static": "open public/static-dashboard.html",
+    "test:coverage:clean": "node dist/testing/coverage/utils/fileManager.js clean",
     "lint": "eslint 'src/**/*.ts'",
     "lint:fix": "eslint 'src/**/*.ts' --fix",
-    "prepublishOnly": "npm run lint && npm test",
+    "prepublishOnly": "npm test",
     "docs": "typedoc --out docs/api src/index.ts",
     "version": "npm run build && git add -A dist",
     "postversion": "git push && git push --tags"
@@ -31,7 +36,8 @@
     "workflow",
     "automation",
     "testing",
-    "tdd"
+    "tdd",
+    "coverage"
   ],
   "author": "pvdyck",
   "license": "ISC",
@@ -47,7 +53,8 @@
     "ajv": "^8.12.0",
     "ajv-formats": "^2.1.1",
     "axios": "^1.8.4",
-    "dotenv": "^16.4.7"
+    "dotenv": "^16.4.7",
+    "chart.js": "^4.4.2"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",

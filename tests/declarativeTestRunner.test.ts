@@ -1,5 +1,5 @@
 import { DeclarativeTestRunner } from '../src/workflows/testing/declarative/runner';
-import { TestCase } from '../src/testing/types';
+import { Credential, TestCase } from '../src/testing/types';
 
 // Mock the WorkflowManager
 jest.mock('../src/workflows/manager', () => {
@@ -23,7 +23,7 @@ jest.mock('../src/workflows/manager', () => {
             error: 'Execution failed'
           });
         }
-        
+
         if (id.includes('transform')) {
           const inputData = data?.data || {};
           return Promise.resolve({
@@ -35,7 +35,7 @@ jest.mock('../src/workflows/manager', () => {
             }
           });
         }
-        
+
         return Promise.resolve({
           success: true,
           data: {
@@ -44,7 +44,14 @@ jest.mock('../src/workflows/manager', () => {
           }
         });
       }),
-      deleteWorkflow: jest.fn().mockResolvedValue(true)
+      deleteWorkflow: jest.fn().mockResolvedValue(true),
+      createCredential: jest.fn().mockImplementation((credential) => {
+        return Promise.resolve({
+          id: `credential-${credential.name}`.replace(/\s+/g, '-').toLowerCase(),
+          ...credential
+        });
+      }),
+      deleteCredential: jest.fn().mockResolvedValue(true)
     };
   });
 });
@@ -91,7 +98,7 @@ jest.mock('fs', () => {
           }
         ]);
       }
-      
+
       if (path.includes('transform-test.json')) {
         return JSON.stringify([
           {
@@ -123,7 +130,7 @@ jest.mock('fs', () => {
           }
         ]);
       }
-      
+
       return JSON.stringify([]);
     }),
     existsSync: jest.fn().mockReturnValue(true),
@@ -133,17 +140,17 @@ jest.mock('fs', () => {
 
 describe('DeclarativeTestRunner', () => {
   let runner: DeclarativeTestRunner;
-  
+
   beforeEach(() => {
     runner = new DeclarativeTestRunner({
       reporter: 'none'
     });
   });
-  
+
   afterEach(() => {
     jest.clearAllMocks();
   });
-  
+
   test('should run a test case', async () => {
     const testCase: TestCase = {
       name: 'Simple Test',
@@ -161,18 +168,18 @@ describe('DeclarativeTestRunner', () => {
         }
       ]
     };
-    
+
     const result = await runner.runTest(testCase);
-    
+
     expect(result.passed).toBe(true);
     expect(result.name).toBe('Simple Test');
     expect(result.assertions).toHaveLength(1);
     expect(result.assertions![0].passed).toBe(true);
   });
-  
+
   test('should run tests from a file', async () => {
     const results = await runner.runTestsFromFile('test-file.json');
-    
+
     expect(results.total).toBe(2);
     expect(results.passed).toBe(1);
     expect(results.failed).toBe(1);
@@ -180,30 +187,30 @@ describe('DeclarativeTestRunner', () => {
     expect(results.results[0].passed).toBe(true);
     expect(results.results[1].passed).toBe(false);
   });
-  
+
   test('should evaluate complex assertions', async () => {
     const results = await runner.runTestsFromFile('transform-test.json');
-    
+
     expect(results.total).toBe(1);
     expect(results.passed).toBe(1);
     expect(results.results[0].assertions).toHaveLength(2);
     expect(results.results[0].assertions![0].passed).toBe(true);
     expect(results.results[0].assertions![1].passed).toBe(true);
   });
-  
+
   test('should handle validation errors', async () => {
     const invalidTestCase: TestCase = {
       name: 'Invalid Test',
       workflows: [], // Missing required workflows
       assertions: []
     };
-    
+
     const result = await runner.runTest(invalidTestCase);
-    
+
     expect(result.passed).toBe(false);
     expect(result.error).toContain('Validation errors');
   });
-  
+
   test('should handle execution errors', async () => {
     const testCase: TestCase = {
       name: 'Error Test',
@@ -221,14 +228,67 @@ describe('DeclarativeTestRunner', () => {
         }
       ]
     };
-    
+
     // Mock the executeWorkflow to throw an error
     const mockManager = require('../src/workflows/manager').mock.results[0].value;
     mockManager.executeWorkflow.mockRejectedValueOnce(new Error('Execution error'));
-    
+
     const result = await runner.runTest(testCase);
-    
+
     expect(result.passed).toBe(false);
     expect(result.error).toContain('Execution error');
+  });
+
+  test('should create and use credentials', async () => {
+    const testCase: TestCase = {
+      name: 'Credential Test',
+      workflows: [
+        {
+          templateName: 'http_request',
+          name: 'API Workflow',
+          isPrimary: true
+        }
+      ],
+      credentials: [
+        {
+          name: 'API Credential',
+          type: 'httpBasicAuth',
+          data: {
+            username: 'testuser',
+            password: 'testpass'
+          }
+        }
+      ],
+      assertions: [
+        {
+          description: 'Response should be successful',
+          assertion: 'result && result.success === true'
+        }
+      ]
+    };
+
+    const result = await runner.runTest(testCase);
+
+    // Verify the test passed
+    expect(result.passed).toBe(true);
+
+    // Verify credentials were created
+    expect(result.credentials).toBeDefined();
+    expect(result.credentials).toHaveLength(1);
+    expect(result.credentials![0].name).toBe('API Credential');
+
+    // Verify createCredential was called
+    const mockManager = require('../src/workflows/manager').mock.results[0].value;
+    expect(mockManager.createCredential).toHaveBeenCalledWith({
+      name: 'API Credential',
+      type: 'httpBasicAuth',
+      data: {
+        username: 'testuser',
+        password: 'testpass'
+      }
+    });
+
+    // Verify deleteCredential was called during cleanup
+    expect(mockManager.deleteCredential).toHaveBeenCalled();
   });
 });
