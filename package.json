@@ -1,6 +1,6 @@
 {
   "name": "n8n-tdd-framework",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "description": "A Test-Driven Development framework for n8n workflows",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
