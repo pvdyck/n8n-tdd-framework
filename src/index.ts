@@ -20,6 +20,7 @@ export * from './docker';
 
 // Utilities
 export * from './utils/n8nClient';
+export * from './utils/credentialEnv';
 export * from './config/config';
 
 // CLI exports

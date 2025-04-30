@@ -74,8 +74,10 @@ const templates = manager.listWorkflowTemplates();
 
 ### Credential Management
 
+All credentials in the framework are managed through environment variables for enhanced security. This ensures sensitive information is never hardcoded in your application.
+
 ```typescript
-import { WorkflowManager, Credential } from 'n8n-tdd-framework';
+import { WorkflowManager } from 'n8n-tdd-framework';
 
 // Create a workflow manager
 const manager = new WorkflowManager();
@@ -87,37 +89,78 @@ await manager.connect();
 const credentialTypes = await manager.listCredentialTypes();
 console.log(`Available credential types: ${credentialTypes.length}`);
 
-// Create a credential
-const credential: Credential = {
-  name: 'My API Credential',
-  type: 'httpBasicAuth',
-  data: {
-    username: 'user',
-    password: 'pass'
-  }
-};
+// List all credentials from environment variables
+const envCredentials = manager.listCredentialsFromEnv();
+console.log(`Found ${envCredentials.length} credential(s) in environment variables`);
 
-const createdCredential = await manager.createCredential(credential);
-console.log(`Created credential with ID: ${createdCredential.id}`);
+// Create a credential from environment variables
+// This will look for environment variables with the prefix N8N_CREDENTIAL_API_*
+const credential = await manager.createCredentialFromEnv('API');
+console.log(`Created credential with ID: ${credential.id}`);
 
-// List all credentials
-const credentials = await manager.listCredentials();
-console.log(`Found ${credentials.length} credential(s)`);
+// Check if a credential exists in environment variables
+if (manager.hasCredentialInEnv('DATABASE')) {
+  // Create the credential
+  const dbCredential = await manager.createCredentialFromEnv('DATABASE');
+}
 
 // Get a credential by ID
-const retrievedCredential = await manager.getCredential(createdCredential.id!);
+const retrievedCredential = await manager.getCredential(credential.id!);
 
 // Update a credential
-await manager.updateCredential(createdCredential.id!, {
+await manager.updateCredential(credential.id!, {
   name: 'Updated API Credential'
 });
 
 // Delete a credential
-await manager.deleteCredential(createdCredential.id!);
+await manager.deleteCredential(credential.id!);
 
 // Disconnect from n8n
 await manager.disconnect();
 ```
+
+#### Defining Credentials in Environment Variables
+
+To define credentials in environment variables, use the following format:
+
+```
+# Basic HTTP Auth Credential
+N8N_CREDENTIAL_API_TYPE=httpBasicAuth
+N8N_CREDENTIAL_API_USERNAME=myusername
+N8N_CREDENTIAL_API_PASSWORD=mypassword
+
+# OAuth2 Credential
+N8N_CREDENTIAL_OAUTH_TYPE=oAuth2Api
+N8N_CREDENTIAL_OAUTH_CLIENT_ID=myclientid
+N8N_CREDENTIAL_OAUTH_CLIENT_SECRET=myclientsecret
+```
+
+The format is `N8N_CREDENTIAL_<NAME>_<PROPERTY>`, where:
+- `<NAME>` is the credential name (e.g., API, OAUTH, DATABASE)
+- `<PROPERTY>` is the property name (e.g., TYPE, USERNAME, PASSWORD)
+
+The `TYPE` property is required and must match a valid n8n credential type.
+
+#### Referencing Environment Variables in Credential Data
+
+You can also reference other environment variables in credential data:
+
+```typescript
+// Create a credential with environment variable references
+const credential: Credential = {
+  name: 'My API Credential',
+  type: 'httpBasicAuth',
+  data: {
+    username: '${API_USERNAME}',
+    password: '${API_PASSWORD}'
+  }
+};
+
+// The environment variables will be resolved when creating the credential
+const createdCredential = await manager.createCredential(credential);
+```
+
+This allows you to reference sensitive information stored in environment variables without hardcoding them in your application.
 
 ### Declarative Testing
 
@@ -153,14 +196,14 @@ Example test file (JSON):
     ],
     "credentials": [
       {
-        "name": "API Credential",
-        "type": "httpBasicAuth",
-        "data": {
-          "username": "testuser",
-          "password": "testpass"
-        },
+        "name": "API",
         "usedByWorkflow": "Test HTTP Workflow",
         "usedByNode": "HTTP Request"
+      },
+      {
+        "name": "OAUTH",
+        "usedByWorkflow": "Test HTTP Workflow",
+        "usedByNode": "OAuth Request"
       }
     ],
     "input": {
@@ -178,6 +221,22 @@ Example test file (JSON):
     ]
   }
 ]
+```
+
+In this example, the credentials `API` and `OAUTH` will be loaded from environment variables. The framework will look for environment variables with the prefixes `N8N_CREDENTIAL_API_*` and `N8N_CREDENTIAL_OAUTH_*` to create these credentials.
+
+Make sure to define these credentials in your `.env` file before running the tests:
+
+```
+# API Credential
+N8N_CREDENTIAL_API_TYPE=httpBasicAuth
+N8N_CREDENTIAL_API_USERNAME=testuser
+N8N_CREDENTIAL_API_PASSWORD=testpass
+
+# OAuth Credential
+N8N_CREDENTIAL_OAUTH_TYPE=oAuth2Api
+N8N_CREDENTIAL_OAUTH_CLIENT_ID=clientid
+N8N_CREDENTIAL_OAUTH_CLIENT_SECRET=clientsecret
 ```
 
 ### Docker Management
@@ -381,9 +440,13 @@ The `WorkflowManager` class provides methods for managing n8n workflows and cred
 - `listCredentialTypes()`: List all credential types
 - `listCredentials()`: List all credentials
 - `getCredential(id: string)`: Get a credential by ID
-- `createCredential(credential: Credential)`: Create a new credential
-- `updateCredential(id: string, credential: Partial<Credential>)`: Update a credential
+- `createCredential(credential: Credential)`: Create a new credential (environment variables are always resolved)
+- `updateCredential(id: string, credential: Partial<Credential>)`: Update a credential (environment variables are always resolved)
 - `deleteCredential(id: string)`: Delete a credential
+- `createCredentialFromEnv(name: string, options?: { envPrefix?: string; envPath?: string })`: Create a credential from environment variables
+- `listCredentialsFromEnv(options?: { envPrefix?: string; envPath?: string })`: List all credentials from environment variables
+- `getCredentialFromEnv(name: string, options?: { envPrefix?: string; envPath?: string })`: Get a credential from environment variables
+- `hasCredentialInEnv(name: string, options?: { envPrefix?: string; envPath?: string })`: Check if a credential exists in environment variables
 
 ### DockerManager
 

@@ -1,6 +1,7 @@
 import { N8nClient } from '../interfaces/n8nClient';
 import RealN8nClient from '../clients/realN8nClient';
-import { Credential, Workflow } from '../testing/types';
+import { Credential, Workflow, TestCredential } from '../testing/types';
+import { resolveCredentialFromEnv, getCredentialFromEnv, hasCredentialInEnv } from './credentialEnv';
 
 /**
  * Create a new n8n client
@@ -212,8 +213,14 @@ export async function getCredential(client: N8nClient, id: string): Promise<Cred
  * @param credential - Credential to create
  * @returns The created credential
  */
-export async function createCredential(client: N8nClient, credential: Credential): Promise<Credential> {
-  const response = await client.post('/credentials', credential);
+export async function createCredential(
+  client: N8nClient,
+  credential: Credential
+): Promise<Credential> {
+  // Always resolve environment variables in credential data
+  const resolvedCredential = resolveCredentialFromEnv(credential);
+
+  const response = await client.post('/credentials', resolvedCredential);
   return response.data;
 }
 
@@ -225,7 +232,32 @@ export async function createCredential(client: N8nClient, credential: Credential
  * @param credential - Credential updates
  * @returns The updated credential
  */
-export async function updateCredential(client: N8nClient, id: string, credential: Partial<Credential>): Promise<Credential> {
+export async function updateCredential(
+  client: N8nClient,
+  id: string,
+  credential: Partial<Credential>
+): Promise<Credential> {
+  // If credential has data property, always resolve environment variables
+  if (credential.data) {
+    const resolvedData: Record<string, any> = {};
+
+    // Resolve environment variables in credential data
+    Object.entries(credential.data).forEach(([key, value]) => {
+      if (typeof value === 'string' && value.startsWith('${') && value.endsWith('}')) {
+        // Extract environment variable name
+        const envName = value.substring(2, value.length - 1);
+        resolvedData[key] = process.env[envName] || '';
+      } else {
+        resolvedData[key] = value;
+      }
+    });
+
+    credential = {
+      ...credential,
+      data: resolvedData
+    };
+  }
+
   const response = await client.put(`/credentials/${id}`, credential);
   return response.data;
 }
@@ -240,4 +272,55 @@ export async function updateCredential(client: N8nClient, id: string, credential
 export async function deleteCredential(client: N8nClient, id: string): Promise<boolean> {
   await client.delete(`/credentials/${id}`);
   return true;
+}
+
+/**
+ * Create a credential from environment variables
+ *
+ * @param client - n8n client
+ * @param name - Credential name in environment variables
+ * @param options - Options for loading credentials
+ * @returns The created credential
+ */
+export async function createCredentialFromEnv(
+  client: N8nClient,
+  name: string,
+  options?: { envPrefix?: string; envPath?: string }
+): Promise<Credential> {
+  // Get credential from environment variables - will throw if not found
+  const credential = getCredentialFromEnv(name, options);
+
+  // Create the credential in n8n - no need to resolve env vars again
+  return createCredential(client, credential);
+}
+
+/**
+ * Check if a credential exists in environment variables
+ *
+ * @param name - Credential name
+ * @param options - Options for loading credentials
+ * @returns True if the credential exists
+ */
+export function checkCredentialInEnv(
+  name: string,
+  options?: { envPrefix?: string; envPath?: string }
+): boolean {
+  return hasCredentialInEnv(name, options);
+}
+
+/**
+ * Create a credential from a test credential definition
+ *
+ * @param client - n8n client
+ * @param testCredential - Test credential definition
+ * @returns The created credential
+ */
+export async function createCredentialFromTestDefinition(
+  client: N8nClient,
+  testCredential: TestCredential
+): Promise<Credential> {
+  // Always load credentials from environment variables
+  return createCredentialFromEnv(client, testCredential.name, {
+    envPrefix: testCredential.envPrefix
+  });
 }

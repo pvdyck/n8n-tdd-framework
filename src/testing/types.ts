@@ -231,6 +231,11 @@ export interface Credential {
    * Whether the credential is shared
    */
   shared?: boolean;
+
+  /**
+   * Source of the credential (e.g., 'env' for environment variables)
+   */
+  source?: string;
 }
 
 /**
@@ -243,16 +248,6 @@ export interface TestCredential {
   name: string;
 
   /**
-   * Credential type
-   */
-  type: string;
-
-  /**
-   * Credential data
-   */
-  data: Record<string, any>;
-
-  /**
    * Workflow that uses this credential
    */
   usedByWorkflow?: string;
@@ -261,6 +256,12 @@ export interface TestCredential {
    * Node that uses this credential
    */
   usedByNode?: string;
+
+  /**
+   * Environment variable prefix for this credential
+   * Default is 'N8N_CREDENTIAL_'
+   */
+  envPrefix?: string;
 }
 
 /**

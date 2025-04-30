@@ -112,15 +112,11 @@ class DeclarativeTestResourceManager implements TestResourceManager {
     if (testCase.credentials) {
       for (const testCredential of testCase.credentials) {
         try {
-          // Convert TestCredential to Credential
-          const credential: Credential = {
-            name: testCredential.name,
-            type: testCredential.type,
-            data: testCredential.data
-          };
-
-          // Create the credential
-          const createdCredential = await this.manager.createCredential(credential);
+          // Always create credential from environment variables
+          const createdCredential = await this.manager.createCredentialFromEnv(
+            testCredential.name,
+            { envPrefix: testCredential.envPrefix }
+          );
 
           // Store the credential ID
           credentialIds[testCredential.name] = createdCredential.id!;

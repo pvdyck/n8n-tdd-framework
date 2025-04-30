@@ -45,10 +45,15 @@ jest.mock('../src/workflows/manager', () => {
         });
       }),
       deleteWorkflow: jest.fn().mockResolvedValue(true),
-      createCredential: jest.fn().mockImplementation((credential) => {
+      createCredentialFromEnv: jest.fn().mockImplementation((name) => {
         return Promise.resolve({
-          id: `credential-${credential.name}`.replace(/\s+/g, '-').toLowerCase(),
-          ...credential
+          id: `credential-${name}`.replace(/\s+/g, '-').toLowerCase(),
+          name: `${name} Credential`,
+          type: 'httpBasicAuth',
+          data: {
+            username: 'testuser',
+            password: 'testpass'
+          }
         });
       }),
       deleteCredential: jest.fn().mockResolvedValue(true)
@@ -251,12 +256,7 @@ describe('DeclarativeTestRunner', () => {
       ],
       credentials: [
         {
-          name: 'API Credential',
-          type: 'httpBasicAuth',
-          data: {
-            username: 'testuser',
-            password: 'testpass'
-          }
+          name: 'API'
         }
       ],
       assertions: [
@@ -275,18 +275,11 @@ describe('DeclarativeTestRunner', () => {
     // Verify credentials were created
     expect(result.credentials).toBeDefined();
     expect(result.credentials).toHaveLength(1);
-    expect(result.credentials![0].name).toBe('API Credential');
+    expect(result.credentials![0].name).toBe('API');
 
-    // Verify createCredential was called
+    // Verify createCredentialFromEnv was called
     const mockManager = require('../src/workflows/manager').mock.results[0].value;
-    expect(mockManager.createCredential).toHaveBeenCalledWith({
-      name: 'API Credential',
-      type: 'httpBasicAuth',
-      data: {
-        username: 'testuser',
-        password: 'testpass'
-      }
-    });
+    expect(mockManager.createCredentialFromEnv).toHaveBeenCalledWith('API', expect.any(Object));
 
     // Verify deleteCredential was called during cleanup
     expect(mockManager.deleteCredential).toHaveBeenCalled();

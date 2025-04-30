@@ -2,9 +2,10 @@ import fs from 'fs';
 import path from 'path';
 import { N8nClient } from '../interfaces/n8nClient';
 import RealN8nClient from '../clients/realN8nClient';
-import { Credential, Workflow } from '../testing/types';
+import { Credential, Workflow, TestCredential } from '../testing/types';
 import * as n8nClientUtils from '../utils/n8nClient';
 import { getConfig } from '../config/config';
+import { listCredentialsFromEnv, getCredentialFromEnv } from '../utils/credentialEnv';
 
 /**
  * Options for the WorkflowManager
@@ -346,13 +347,72 @@ export default class WorkflowManager {
   }
 
   /**
+   * Create a credential from environment variables
+   *
+   * @param name - Credential name in environment variables
+   * @param options - Options for loading credentials
+   * @returns The created credential
+   */
+  async createCredentialFromEnv(
+    name: string,
+    options?: { envPrefix?: string; envPath?: string }
+  ): Promise<Credential> {
+    return n8nClientUtils.createCredentialFromEnv(this.client, name, options);
+  }
+
+  /**
+   * Create a credential from a test credential definition
+   *
+   * @param testCredential - Test credential definition
+   * @returns The created credential
+   */
+  async createCredentialFromTestDefinition(testCredential: TestCredential): Promise<Credential> {
+    return n8nClientUtils.createCredentialFromTestDefinition(this.client, testCredential);
+  }
+
+  /**
+   * List all credentials from environment variables
+   *
+   * @param options - Options for loading credentials
+   * @returns List of credentials from environment variables
+   */
+  listCredentialsFromEnv(options?: { envPrefix?: string; envPath?: string }): Credential[] {
+    return listCredentialsFromEnv(options);
+  }
+
+  /**
+   * Get a credential from environment variables
+   *
+   * @param name - Credential name
+   * @param options - Options for loading credentials
+   * @returns The credential or undefined if not found
+   */
+  getCredentialFromEnv(name: string, options?: { envPrefix?: string; envPath?: string }): Credential | undefined {
+    return getCredentialFromEnv(name, options);
+  }
+
+  /**
+   * Check if a credential exists in environment variables
+   *
+   * @param name - Credential name
+   * @param options - Options for loading credentials
+   * @returns True if the credential exists
+   */
+  hasCredentialInEnv(name: string, options?: { envPrefix?: string; envPath?: string }): boolean {
+    return n8nClientUtils.checkCredentialInEnv(name, options);
+  }
+
+  /**
    * Update a credential
    *
    * @param id - Credential ID
    * @param credential - Credential updates
    * @returns The updated credential
    */
-  async updateCredential(id: string, credential: Partial<Credential>): Promise<Credential> {
+  async updateCredential(
+    id: string,
+    credential: Partial<Credential>
+  ): Promise<Credential> {
     return n8nClientUtils.updateCredential(this.client, id, credential);
   }
 

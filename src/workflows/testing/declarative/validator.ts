@@ -7,18 +7,18 @@ import { TestValidator } from './types';
 export class DeclarativeTestValidator implements TestValidator {
   /**
    * Validate a test case
-   * 
+   *
    * @param testCase - Test case to validate
    * @returns Validation errors, if any
    */
   validateTestCase(testCase: TestCase): string[] {
     const errors: string[] = [];
-    
+
     // Validate required fields
     if (!testCase.name) {
       errors.push('Test name is required');
     }
-    
+
     if (!testCase.workflows || !Array.isArray(testCase.workflows) || testCase.workflows.length === 0) {
       errors.push('At least one workflow is required');
     } else {
@@ -29,7 +29,7 @@ export class DeclarativeTestValidator implements TestValidator {
           errors.push(`Workflow ${index} (${workflow.name}): ${error}`);
         });
       });
-      
+
       // Check for primary workflow
       const primaryWorkflows = testCase.workflows.filter(w => w.isPrimary);
       if (primaryWorkflows.length === 0) {
@@ -38,7 +38,7 @@ export class DeclarativeTestValidator implements TestValidator {
         errors.push('Only one workflow can be marked as primary');
       }
     }
-    
+
     // Validate credentials if present
     if (testCase.credentials && Array.isArray(testCase.credentials)) {
       testCase.credentials.forEach((credential, index) => {
@@ -48,7 +48,7 @@ export class DeclarativeTestValidator implements TestValidator {
         });
       });
     }
-    
+
     // Validate assertions if present
     if (testCase.assertions && Array.isArray(testCase.assertions)) {
       if (testCase.assertions.length === 0) {
@@ -62,67 +62,59 @@ export class DeclarativeTestValidator implements TestValidator {
         });
       }
     }
-    
+
     return errors;
   }
-  
+
   /**
    * Validate a test workflow
-   * 
+   *
    * @param workflow - Test workflow to validate
    * @returns Validation errors, if any
    */
   validateTestWorkflow(workflow: TestWorkflow): string[] {
     const errors: string[] = [];
-    
+
     if (!workflow.templateName) {
       errors.push('Template name is required');
     }
-    
+
     if (!workflow.name) {
       errors.push('Workflow name is required');
     }
-    
+
     return errors;
   }
-  
+
   /**
    * Validate a test credential
-   * 
+   *
    * @param credential - Test credential to validate
    * @returns Validation errors, if any
    */
   validateTestCredential(credential: TestCredential): string[] {
     const errors: string[] = [];
-    
+
     if (!credential.name) {
       errors.push('Credential name is required');
     }
-    
-    if (!credential.type) {
-      errors.push('Credential type is required');
-    }
-    
-    if (!credential.data || typeof credential.data !== 'object') {
-      errors.push('Credential data is required and must be an object');
-    }
-    
+
     return errors;
   }
-  
+
   /**
    * Validate an assertion
-   * 
+   *
    * @param assertion - Assertion to validate
    * @returns Validation errors, if any
    */
   validateAssertion(assertion: Assertion): string[] {
     const errors: string[] = [];
-    
+
     if (!assertion.description) {
       errors.push('Assertion description is required');
     }
-    
+
     if (!assertion.assertion) {
       errors.push('Assertion expression is required');
     } else {
@@ -135,14 +127,14 @@ export class DeclarativeTestValidator implements TestValidator {
         errors.push(`Invalid assertion syntax: ${(error as Error).message}`);
       }
     }
-    
+
     return errors;
   }
 }
 
 /**
  * Create a new declarative test validator
- * 
+ *
  * @returns A new validator instance
  */
 export function createValidator(): TestValidator {
