@@ -4,6 +4,20 @@ import fs from 'fs';
 import path from 'path';
 import WorkflowManager from './manager';
 import { loadConfig } from '../config/config';
+import { 
+  checkCoverageThresholdsFromFile, 
+  findLatestCoverageFile,
+  cleanCoverageFiles,
+  generateDashboard,
+  CoverageOptions
+} from '../testing/coverage';
+import {
+  startContainer,
+  stopContainer,
+  restartContainer,
+  containerStatus,
+  showDockerHelp
+} from '../cli/commands/docker';
 
 // Load configuration
 loadConfig();
@@ -37,6 +51,13 @@ export default class WorkflowCLI {
     const command = args[0];
     
     try {
+      // Commands that don't require connection to n8n
+      if (this.isLocalCommand(command)) {
+        await this.runLocalCommand(command, args.slice(1));
+        return;
+      }
+      
+      // Commands that require connection to n8n
       await this.manager.connect();
       
       switch (command) {
@@ -101,7 +122,74 @@ export default class WorkflowCLI {
       console.error(`Error: ${(error as Error).message}`);
       process.exit(1);
     } finally {
-      await this.manager.disconnect();
+      if (!this.isLocalCommand(command)) {
+        await this.manager.disconnect();
+      }
+    }
+  }
+  
+  /**
+   * Check if a command is a local command (doesn't require n8n connection)
+   */
+  private isLocalCommand(command: string): boolean {
+    return [
+      'coverage:check',
+      'coverage:dashboard',
+      'coverage:clean',
+      'docker:start',
+      'docker:stop',
+      'docker:restart',
+      'docker:status',
+      'docker:help',
+      'help'
+    ].includes(command);
+  }
+  
+  /**
+   * Run a local command
+   */
+  private async runLocalCommand(command: string, args: string[]): Promise<void> {
+    switch (command) {
+      case 'coverage:check':
+        await this.checkCoverage(args);
+        break;
+      
+      case 'coverage:dashboard':
+        await this.generateCoverageDashboard(args);
+        break;
+      
+      case 'coverage:clean':
+        await this.cleanCoverageFiles(args);
+        break;
+      
+      case 'docker:start':
+        await startContainer(args);
+        break;
+      
+      case 'docker:stop':
+        await stopContainer(args);
+        break;
+      
+      case 'docker:restart':
+        await restartContainer(args);
+        break;
+      
+      case 'docker:status':
+        await containerStatus(args);
+        break;
+      
+      case 'docker:help':
+        showDockerHelp();
+        break;
+      
+      case 'help':
+        this.showHelp();
+        break;
+      
+      default:
+        console.error(`Unknown command: ${command}`);
+        this.showHelp();
+        break;
     }
   }
   
@@ -125,6 +213,19 @@ export default class WorkflowCLI {
     console.log('  import <filepath>              Import a workflow from a file');
     console.log('  save-template <id> <name>      Save a workflow as a template');
     console.log('  list-templates                 List all workflow templates');
+    console.log('');
+    console.log('Coverage commands:');
+    console.log('  coverage:check [file]          Check coverage thresholds');
+    console.log('  coverage:dashboard             Generate coverage dashboard');
+    console.log('  coverage:clean                 Clean up coverage files');
+    console.log('');
+    console.log('Docker commands:');
+    console.log('  docker:start                   Start n8n Docker container');
+    console.log('  docker:stop                    Stop n8n Docker container');
+    console.log('  docker:restart                 Restart n8n Docker container');
+    console.log('  docker:status                  Get n8n Docker container status');
+    console.log('  docker:help                    Show Docker help');
+    console.log('');
     console.log('  help                           Show this help message');
   }
   
@@ -350,6 +451,98 @@ export default class WorkflowCLI {
     templates.forEach(template => {
       console.log(`- ${template}`);
     });
+  }
+  
+  /**
+   * Check coverage thresholds
+   */
+  private async checkCoverage(args: string[]): Promise<void> {
+    // Parse threshold arguments
+    const options: Partial<CoverageOptions> = {
+      thresholds: {
+        nodes: 60,
+        connections: 60,
+        branches: 50
+      }
+    };
+    
+    args.forEach(arg => {
+      if (arg.startsWith('--threshold-nodes=')) {
+        if (options.thresholds) {
+          options.thresholds.nodes = parseFloat(arg.split('=')[1]);
+        }
+      } else if (arg.startsWith('--threshold-connections=')) {
+        if (options.thresholds) {
+          options.thresholds.connections = parseFloat(arg.split('=')[1]);
+        }
+      } else if (arg.startsWith('--threshold-branches=')) {
+        if (options.thresholds) {
+          options.thresholds.branches = parseFloat(arg.split('=')[1]);
+        }
+      }
+    });
+    
+    // Get coverage file path from arguments or find the latest
+    const coverageFilePath = args.find(arg => !arg.startsWith('--'))
+      || findLatestCoverageFile(path.resolve(process.cwd(), 'coverage'));
+    
+    if (!coverageFilePath) {
+      console.error('Error: No coverage file specified and no coverage files found');
+      process.exit(1);
+    }
+    
+    // Check thresholds
+    const result = checkCoverageThresholdsFromFile(coverageFilePath, options);
+    
+    // Print messages
+    result.messages.forEach(message => console.log(message));
+    
+    // Exit with appropriate code
+    process.exit(result.passed ? 0 : 1);
+  }
+  
+  /**
+   * Generate coverage dashboard
+   */
+  private async generateCoverageDashboard(args: string[]): Promise<void> {
+    const options: Partial<CoverageOptions> = {};
+    
+    // Parse output directory
+    args.forEach(arg => {
+      if (arg.startsWith('--output=')) {
+        options.dashboard = {
+          enabled: true,
+          outputDir: arg.split('=')[1]
+        };
+      }
+    });
+    
+    // Generate dashboard
+    const dashboardPath = generateDashboard(options);
+    
+    if (dashboardPath) {
+      console.log(`Coverage dashboard generated at: ${dashboardPath}`);
+    } else {
+      console.error('Error generating coverage dashboard');
+      process.exit(1);
+    }
+  }
+  
+  /**
+   * Clean up coverage files
+   */
+  private async cleanCoverageFiles(args: string[]): Promise<void> {
+    const options: Partial<CoverageOptions> = {};
+    
+    // Parse coverage directory
+    args.forEach(arg => {
+      if (arg.startsWith('--dir=')) {
+        options.outputDir = arg.split('=')[1];
+      }
+    });
+    
+    // Clean up coverage files
+    cleanCoverageFiles(options);
   }
 }
 

@@ -12,6 +12,12 @@ export * from './workflows/testing/declarative/testCreator';
 export * from './workflows/testing/declarative/types';
 export * from './workflows/testing/declarative/validator';
 
+// Coverage functionality
+export * from './testing/coverage';
+
+// Docker management
+export * from './docker';
+
 // Utilities
 export * from './utils/n8nClient';
 export * from './config/config';
