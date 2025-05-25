@@ -1,0 +1,56 @@
+{
+  "name": "Webhook to Email",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "webhook-endpoint",
+        "responseMode": "onReceived",
+        "responseData": "allEntries",
+        "responsePropertyName": "data",
+        "responseHeaders": {},
+        "options": {}
+      },
+      "id": "webhook-node",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "webhook-id"
+    },
+    {
+      "parameters": {
+        "fromEmail": "${EMAIL_FROM}",
+        "toEmail": "${EMAIL_TO}",
+        "subject": "Webhook Notification",
+        "text": "=Webhook received with data:\n\n{{JSON.stringify($json, null, 2)}}",
+        "options": {}
+      },
+      "id": "email-node",
+      "name": "Send Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [450, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Send Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": null
+}

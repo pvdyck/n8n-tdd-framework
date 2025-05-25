@@ -1,0 +1,94 @@
+{
+  "name": "Data Transformation Pipeline",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "start-node",
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Transform input data\nconst items = $input.all();\n\nreturn items.map(item => {\n  const transformed = {\n    ...item.json,\n    processedAt: new Date().toISOString(),\n    // Add your transformation logic here\n    upperCaseName: item.json.name?.toUpperCase(),\n    calculatedValue: (item.json.value || 0) * 1.2,\n    tags: item.json.tags || ['untagged']\n  };\n  \n  // Remove sensitive fields\n  delete transformed.password;\n  delete transformed.apiKey;\n  \n  return {\n    json: transformed\n  };\n});"
+      },
+      "id": "transform-data",
+      "name": "Transform Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "mode": "jsonToCsv",
+        "convertAllData": false,
+        "headerRow": true,
+        "delimiter": ",",
+        "includeHeader": true,
+        "options": {}
+      },
+      "id": "convert-format",
+      "name": "Convert to CSV",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=transformed_data_{{$now.format('yyyy-MM-dd_HH-mm-ss')}}.csv",
+        "options": {}
+      },
+      "id": "save-file",
+      "name": "Save to File",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [850, 300],
+      "notesInFlow": false
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Transform Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform Data": {
+      "main": [
+        [
+          {
+            "node": "Convert to CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to CSV": {
+      "main": [
+        [
+          {
+            "node": "Save to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["transformation", "etl"],
+  "triggerCount": 0,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": null
+}

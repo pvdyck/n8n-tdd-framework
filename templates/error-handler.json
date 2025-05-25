@@ -1,0 +1,139 @@
+{
+  "name": "Error Handler Workflow",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "error-trigger",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "errorMessage",
+              "value": "={{$json.execution.error.message}}"
+            },
+            {
+              "name": "errorWorkflow",
+              "value": "={{$json.workflow.name}}"
+            },
+            {
+              "name": "errorNode",
+              "value": "={{$json.execution.error.node.name}}"
+            },
+            {
+              "name": "errorTime",
+              "value": "={{$json.execution.error.time}}"
+            },
+            {
+              "name": "executionId",
+              "value": "={{$json.execution.id}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "extract-error",
+      "name": "Extract Error Info",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "content": "## Error Details\n\n**Workflow:** {{$json.errorWorkflow}}\n**Node:** {{$json.errorNode}}\n**Time:** {{$json.errorTime}}\n**Execution ID:** {{$json.executionId}}\n\n### Error Message\n```\n{{$json.errorMessage}}\n```\n\n### Full Error Context\n```json\n{{JSON.stringify($input.item().json, null, 2)}}\n```",
+        "options": {}
+      },
+      "id": "format-message",
+      "name": "Format Error Message",
+      "type": "n8n-nodes-base.markdown",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "text": "=🚨 *Workflow Error Alert*\n\n*Workflow:* `{{$json.errorWorkflow}}`\n*Failed Node:* `{{$json.errorNode}}`\n*Time:* {{$json.errorTime}}\n*Error:* {{$json.errorMessage}}\n\n[View Execution]({{$env.N8N_BASE_URL}}/workflow/{{$json.workflow.id}}/executions/{{$json.executionId}})",
+        "additionalFields": {
+          "thread_ts": ""
+        },
+        "options": {}
+      },
+      "id": "notify-slack",
+      "name": "Notify Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [850, 200],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "fromEmail": "${ERROR_FROM_EMAIL}",
+        "toEmail": "${ERROR_TO_EMAIL}",
+        "subject": "=Workflow Error: {{$json.errorWorkflow}}",
+        "text": "={{$('Format Error Message').item.html}}",
+        "options": {}
+      },
+      "id": "notify-email",
+      "name": "Notify Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [850, 400]
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extract Error Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Error Info": {
+      "main": [
+        [
+          {
+            "node": "Format Error Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Error Message": {
+      "main": [
+        [
+          {
+            "node": "Notify Slack",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Notify Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "any"
+  },
+  "staticData": null,
+  "tags": ["error-handling", "monitoring"],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": null
+}
