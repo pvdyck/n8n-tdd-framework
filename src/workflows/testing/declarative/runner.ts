@@ -207,7 +207,9 @@ export class DeclarativeTestRunner {
     };
 
     this.manager = new WorkflowManager({
-      templatesDir: this.config.templatesDir
+      templatesDir: this.config.templatesDir,
+      apiKey: options?.apiKey,
+      apiUrl: options?.apiUrl
     });
 
     this.validator = new DeclarativeTestValidator();

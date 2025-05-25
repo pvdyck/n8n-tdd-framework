@@ -1,37 +1,36 @@
 /**
  * Docker manager for n8n-tdd-framework
+ * Uses docker-compose for container management
  */
 
-import { execSync, spawn } from 'child_process';
+import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import axios from 'axios';
 import { DockerContainerConfig, ContainerStatus, DockerManager } from './interfaces';
 
 /**
- * Docker manager for n8n containers
+ * Docker manager for n8n containers using docker-compose
  */
 export class N8nDockerManager implements DockerManager {
   private config: DockerContainerConfig;
-  private defaultDataDir: string;
+  private dockerComposeFile: string;
+  private serviceName = 'n8n-unlicensed'; // Service name from docker-compose.yml
 
   /**
    * Create a new Docker manager
    * @param config - Docker container configuration
    */
   constructor(config: DockerContainerConfig) {
-    // Set default data directory
-    this.defaultDataDir = path.resolve(process.cwd(), './n8n_data');
+    // Set docker-compose file path
+    this.dockerComposeFile = path.resolve(process.cwd(), 'docker-compose.yml');
 
     // Set default configuration
     this.config = {
-      containerName: 'n8n',
-      image: 'n8nio/n8n',
+      containerName: 'n8n-unlicensed',  // Match docker-compose.yml
       port: 5678,
-      dataDir: this.defaultDataDir,
       healthCheckTimeout: 60,
       env: {},
-      volumes: [],
       ...config
     };
 
@@ -43,6 +42,11 @@ export class N8nDockerManager implements DockerManager {
     // Validate required configuration
     if (!this.config.apiKey) {
       throw new Error('API key is required');
+    }
+    
+    // Check if docker-compose file exists
+    if (!fs.existsSync(this.dockerComposeFile)) {
+      throw new Error(`Docker compose file not found at ${this.dockerComposeFile}`);
     }
   }
 
@@ -72,22 +76,17 @@ export class N8nDockerManager implements DockerManager {
   }
 
   /**
-   * Check if n8n container is running
+   * Check if n8n container is running using docker-compose
    * @returns boolean True if n8n container is running
    */
   private isContainerRunning(): boolean {
     try {
-      // First check for exact container name
-      let result = execSync(`docker ps -q -f name=^/${this.config.containerName}$`).toString().trim();
-      if (result !== '') {
-        return true;
-      }
-      
-      // Then check for any n8n container
-      result = execSync(`docker ps -q -f name=n8n`).toString().trim();
+      const result = execSync(
+        `docker-compose -f ${this.dockerComposeFile} ps -q ${this.serviceName}`,
+        { stdio: 'pipe' }
+      ).toString().trim();
       return result !== '';
     } catch (error) {
-      console.error('Error checking if container is running:', (error as Error).message);
       return false;
     }
   }
@@ -99,135 +98,62 @@ export class N8nDockerManager implements DockerManager {
    */
   private isPortInUse(port: number | string): boolean {
     try {
-      const result = execSync(`docker ps --format '{{.Ports}}' | grep ${port}`).toString().trim();
-      return result !== '';
+      if (process.platform === 'win32') {
+        const result = execSync(`netstat -ano | findstr :${port}`).toString();
+        return result.includes('LISTENING');
+      } else {
+        const result = execSync(`lsof -ti:${port} 2>/dev/null || true`).toString();
+        return result.trim() !== '';
+      }
     } catch (error) {
-      // If command fails, port is likely not in use by Docker
       return false;
     }
   }
 
   /**
-   * Find container using port
-   * @param port - Port to check
-   * @returns string|null Container name or null if not found
-   */
-  private findContainerUsingPort(port: number | string): string | null {
-    try {
-      const result = execSync(`docker ps --format '{{.Names}} {{.Ports}}' | grep ${port}`).toString().trim();
-      if (result) {
-        return result.split(' ')[0];
-      }
-      return null;
-    } catch (error) {
-      return null;
-    }
-  }
-
-  /**
-   * Ensure n8n data directory exists and has correct permissions
-   */
-  private ensureDataDirExists(): void {
-    try {
-      const dataDir = this.config.dataDir!;
-      
-      if (!fs.existsSync(dataDir)) {
-        console.log(`Creating n8n data directory: ${dataDir}`);
-        fs.mkdirSync(dataDir, { recursive: true });
-      }
-      
-      // Set appropriate permissions for the data directory
-      console.log(`Setting permissions for n8n data directory: ${dataDir}`);
-      
-      // Create necessary files with proper permissions if they don't exist
-      const crashJournalPath = path.join(dataDir, 'crash.journal');
-      if (!fs.existsSync(crashJournalPath)) {
-        fs.writeFileSync(crashJournalPath, '');
-      }
-      
-      // Set permissions - use platform-specific commands
-      if (process.platform === 'win32') {
-        // Windows - permissions are handled differently
-        console.log('Running on Windows - skipping explicit permission setting');
-      } else {
-        // Unix-like systems
-        try {
-          // Make the directory and its contents writable by all users
-          // This is a workaround for Docker volume permission issues
-          execSync(`chmod -R 777 ${dataDir}`);
-          console.log('Permissions set successfully');
-        } catch (permError) {
-          console.warn('Warning: Could not set permissions:', (permError as Error).message);
-          console.warn('The container might still work, but you might see permission errors');
-        }
-      }
-    } catch (error) {
-      throw new Error(`Error creating n8n data directory: ${(error as Error).message}`);
-    }
-  }
-
-  /**
-   * Start n8n container
+   * Start n8n container using docker-compose
    * @returns Promise<boolean> True if container started successfully
    */
   public async start(): Promise<boolean> {
     try {
-      // Check if n8n is already running
-      if (await this.isRunning()) {
-        console.log('n8n is already running and accessible at ' + this.config.apiUrl);
-        console.log('You can use this instance instead of starting a new one');
-        return true;
-      }
-      
-      // Check if container is running but API is not accessible
+      // Check if already running
       if (this.isContainerRunning()) {
-        console.log('n8n container is running but API is not accessible. Stopping and restarting...');
-        await this.stop();
+        console.log('n8n container is already running');
+        if (await this.isRunning()) {
+          console.log('n8n is accessible');
+          return true;
+        } else {
+          console.log('n8n container is running but not accessible, waiting for health...');
+          return await this.waitForHealth(this.config.healthCheckTimeout);
+        }
       }
       
-      // Check if port is already in use
+      // Check if port is in use
       if (this.isPortInUse(this.config.port!)) {
-        const containerName = this.findContainerUsingPort(this.config.port!);
-        throw new Error(`Port ${this.config.port} is already in use by container ${containerName || 'unknown'}`);
+        // Check if n8n is already running at that port
+        if (await this.isRunning()) {
+          console.log('n8n is already running at port', this.config.port);
+          return true;
+        }
+        console.error(`Port ${this.config.port} is already in use by another process`);
+        return false;
       }
       
-      this.ensureDataDirExists();
+      console.log('Starting n8n container with docker-compose...');
       
-      console.log('Starting n8n container...');
-      
-      // Build environment variables
-      const envVars = {
-        N8N_PORT: '5678',
-        N8N_PROTOCOL: 'http',
-        N8N_HOST: '0.0.0.0',
-        N8N_DIAGNOSTICS_ENABLED: 'false',
+      // Set environment variables for docker-compose
+      const env = {
+        ...process.env,
         N8N_API_KEY: this.config.apiKey,
-        N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: 'false',
-        NODE_ENV: 'production',
+        N8N_API_ENABLED: 'true',
         ...this.config.env
       };
       
-      // Build environment variable arguments
-      const envArgs = Object.entries(envVars)
-        .map(([key, value]) => `-e ${key}=${value}`)
-        .join(' ');
-      
-      // Build volume mounts
-      const volumeMounts = [
-        `-v ${this.config.dataDir}:/home/node/.n8n`,
-        ...(this.config.volumes || [])
-      ].join(' ');
-      
-      // Start container
-      execSync(`docker run -d --name ${this.config.containerName} \
-        -p ${this.config.port}:5678 \
-        ${envArgs} \
-        ${volumeMounts} \
-        --health-cmd "wget --spider http://localhost:5678/healthz || exit 1" \
-        --health-interval 10s \
-        --health-timeout 5s \
-        --health-retries 3 \
-        ${this.config.image}`);
+      // Start container with docker-compose
+      execSync(`docker-compose -f ${this.dockerComposeFile} up -d ${this.serviceName}`, {
+        env,
+        stdio: 'inherit'
+      });
       
       console.log('n8n container started');
       
@@ -240,37 +166,17 @@ export class N8nDockerManager implements DockerManager {
   }
 
   /**
-   * Stop and remove n8n container
+   * Stop n8n container using docker-compose
    * @returns Promise<boolean> True if container stopped successfully
    */
   public async stop(): Promise<boolean> {
     try {
-      // Check for exact container name
-      let containerName = this.config.containerName!;
-      let containerExists = false;
-      
-      try {
-        execSync(`docker inspect ${containerName}`);
-        containerExists = true;
-      } catch (error) {
-        // Check for any n8n container
-        try {
-          const result = execSync(`docker ps --format '{{.Names}}' -f name=n8n`).toString().trim();
-          if (result) {
-            containerName = result.split('\n')[0];
-            containerExists = true;
-          }
-        } catch (inspectError) {
-          // No container found
-        }
-      }
-      
-      if (containerExists) {
-        console.log(`Stopping n8n container (${containerName})...`);
-        execSync(`docker stop ${containerName}`);
-        console.log(`Removing n8n container (${containerName})...`);
-        execSync(`docker rm ${containerName}`);
-        console.log('n8n container stopped and removed');
+      if (this.isContainerRunning()) {
+        console.log('Stopping n8n container with docker-compose...');
+        execSync(`docker-compose -f ${this.dockerComposeFile} stop ${this.serviceName}`, {
+          stdio: 'inherit'
+        });
+        console.log('n8n container stopped');
         return true;
       } else {
         console.log('n8n container is not running');
@@ -299,101 +205,121 @@ export class N8nDockerManager implements DockerManager {
           console.log('n8n is healthy!');
           return true;
         }
-        
-        // Check container health status
-        const healthStatus = execSync(`docker inspect --format='{{.State.Health.Status}}' ${this.config.containerName}`).toString().trim();
-        console.log(`Container health status: ${healthStatus}`);
-        
-        if (healthStatus === 'unhealthy') {
-          console.error('Container is unhealthy. Showing logs:');
-          execSync(`docker logs ${this.config.containerName}`, { stdio: 'inherit' });
-          return false;
-        }
-        
-        // Wait before next check
-        await new Promise(resolve => setTimeout(resolve, 2000));
       } catch (error) {
-        // Continue waiting
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Ignore errors during health check
       }
+      
+      // Wait 1 second before next check
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
     
-    console.error(`Timeout waiting for n8n to be healthy after ${timeout} seconds`);
+    console.error(`n8n did not become healthy within ${timeout} seconds`);
     return false;
   }
 
   /**
-   * Get n8n container status
-   * @returns Promise<ContainerStatus> Container status
-   */
-  public async status(): Promise<ContainerStatus> {
-    try {
-      // Check for exact container name
-      let containerName = this.config.containerName!;
-      let containerExists = false;
-      
-      try {
-        execSync(`docker inspect ${containerName}`);
-        containerExists = true;
-      } catch (error) {
-        // Check for any n8n container
-        try {
-          const result = execSync(`docker ps --format '{{.Names}}' -f name=n8n`).toString().trim();
-          if (result) {
-            containerName = result.split('\n')[0];
-            containerExists = true;
-          }
-        } catch (inspectError) {
-          // No container found
-        }
-      }
-      
-      if (!containerExists) {
-        return { running: false };
-      }
-      
-      // Get container details
-      const details = execSync(`docker inspect ${containerName}`).toString();
-      const parsedDetails = JSON.parse(details)[0];
-      
-      // Check API accessibility
-      const apiAccessible = await this.isRunning();
-      
-      return {
-        running: true,
-        id: parsedDetails.Id.substring(0, 12),
-        name: containerName,
-        created: parsedDetails.Created,
-        status: parsedDetails.State.Status,
-        health: parsedDetails.State.Health?.Status || 'N/A',
-        image: parsedDetails.Config.Image,
-        ports: `${this.config.port}:5678`,
-        volumes: `${this.config.dataDir}:/home/node/.n8n`,
-        apiAccessible
-      };
-    } catch (error) {
-      console.error('Error checking n8n container status:', (error as Error).message);
-      return { running: false };
-    }
-  }
-
-  /**
-   * Restart n8n container
+   * Restart n8n container using docker-compose
    * @returns Promise<boolean> True if container restarted successfully
    */
   public async restart(): Promise<boolean> {
     try {
-      await this.stop();
-      return await this.start();
+      console.log('Restarting n8n container with docker-compose...');
+      
+      // Set environment variables for docker-compose
+      const env = {
+        ...process.env,
+        N8N_API_KEY: this.config.apiKey,
+        N8N_API_ENABLED: 'true',
+        ...this.config.env
+      };
+      
+      execSync(`docker-compose -f ${this.dockerComposeFile} restart ${this.serviceName}`, {
+        env,
+        stdio: 'inherit'
+      });
+      
+      console.log('n8n container restarted');
+      
+      // Wait for container to be healthy
+      return await this.waitForHealth(this.config.healthCheckTimeout);
     } catch (error) {
       console.error('Error restarting n8n container:', (error as Error).message);
       return false;
     }
   }
+
+  /**
+   * Get n8n container status using docker-compose
+   * @returns Promise<ContainerStatus> Container status
+   */
+  public async status(): Promise<ContainerStatus> {
+    try {
+      // Default status
+      const status: ContainerStatus = {
+        running: false
+      };
+      
+      // Check if container exists and get basic status
+      const isRunning = this.isContainerRunning();
+      
+      if (isRunning) {
+        status.running = true;
+        
+        try {
+          // Get detailed container info using docker inspect
+          const containerInfo = execSync(
+            `docker inspect ${this.config.containerName} --format '{{json .}}'`,
+            { stdio: 'pipe' }
+          ).toString();
+          
+          const info = JSON.parse(containerInfo);
+          
+          status.id = info.Id?.substring(0, 12);
+          status.name = info.Name?.replace(/^\//, '');
+          status.created = info.Created;
+          status.status = info.State?.Status;
+          status.health = info.State?.Health?.Status;
+          status.image = info.Config?.Image;
+          
+          // Get ports
+          if (info.NetworkSettings?.Ports) {
+            const ports = [];
+            for (const [containerPort, hostBindings] of Object.entries(info.NetworkSettings.Ports)) {
+              if (hostBindings && Array.isArray(hostBindings)) {
+                for (const binding of hostBindings) {
+                  if (binding.HostPort) {
+                    ports.push(`${binding.HostPort}->${containerPort}`);
+                  }
+                }
+              }
+            }
+            status.ports = ports.join(', ');
+          }
+          
+          // Get volumes
+          if (info.Mounts && Array.isArray(info.Mounts)) {
+            const volumes = info.Mounts.map((mount: any) => `${mount.Source}:${mount.Destination}`).join(', ');
+            status.volumes = volumes;
+          }
+          
+          // Check API accessibility
+          status.apiAccessible = await this.isRunning();
+        } catch (error) {
+          // If we can't get detailed info, just return basic status
+          console.warn('Could not get detailed container info:', (error as Error).message);
+        }
+      }
+      
+      return status;
+    } catch (error) {
+      console.error('Error getting n8n container status:', (error as Error).message);
+      return { running: false };
+    }
+  }
 }
 
 /**
- * Create a new Docker manager
+ * Create a new Docker manager instance
  * @param config - Docker container configuration
  * @returns DockerManager instance
  */

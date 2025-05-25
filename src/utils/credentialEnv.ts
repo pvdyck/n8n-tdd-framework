@@ -88,10 +88,12 @@ export function loadCredentialsFromEnv(options?: CredentialEnvOptions): Map<stri
       data: {}
     };
 
-    // Add all other properties to the credential data
+    // Add all other properties to the credential data with field mapping
     Object.keys(properties).forEach(key => {
       if (key !== 'name' && key !== 'type') {
-        credential.data[key] = properties[key];
+        // Map credential fields for compatibility
+        const mappedKey = mapCredentialField(properties.type, key);
+        credential.data[mappedKey] = properties[key];
       }
     });
 
@@ -172,9 +174,13 @@ export function resolveCredentialFromEnv(credential: Credential, options?: Crede
     if (typeof value === 'string' && value.startsWith('${') && value.endsWith('}')) {
       // Extract environment variable name
       const envName = value.substring(2, value.length - 1);
-      resolvedData[key] = process.env[envName] || '';
+      // Apply field mapping and resolve environment variable
+      const mappedKey = mapCredentialField(credential.type, key);
+      resolvedData[mappedKey] = process.env[envName] || '';
     } else {
-      resolvedData[key] = value;
+      // Apply field mapping for non-environment variables too
+      const mappedKey = mapCredentialField(credential.type, key);
+      resolvedData[mappedKey] = value;
     }
   });
 
@@ -182,4 +188,24 @@ export function resolveCredentialFromEnv(credential: Credential, options?: Crede
     ...credential,
     data: resolvedData
   };
+}
+
+/**
+ * Map credential field names for different n8n versions
+ * @private
+ */
+function mapCredentialField(credentialType: string, fieldName: string): string {
+  // Field mappings for different credential types and n8n versions
+  const fieldMappings: Record<string, Record<string, string>> = {
+    'httpBasicAuth': {
+      'username': 'user',  // Some n8n versions expect 'user' instead of 'username'
+      'password': 'password'
+    },
+    'httpHeaderAuth': {
+      'name': 'name',
+      'value': 'value'
+    }
+  };
+
+  return fieldMappings[credentialType]?.[fieldName] || fieldName;
 }
