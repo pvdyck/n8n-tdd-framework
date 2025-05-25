@@ -1,5 +1,10 @@
 # n8n-tdd-framework Implementation Guide
 
+> **Status**: Historical Migration Document
+> 
+> This document was used during the initial migration from the "diane" project to the n8n-tdd-framework.
+> The migration has been completed and this document is kept for historical reference only.
+
 This guide provides the specific npm commands and steps needed to package the n8n TDD framework for use in other projects.
 
 ## Prerequisites

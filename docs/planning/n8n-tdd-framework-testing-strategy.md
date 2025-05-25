@@ -1,5 +1,11 @@
 # Testing Strategy for n8n-tdd-framework
 
+> **Status**: Planning Document - Partially Implemented
+> 
+> This document describes the comprehensive testing strategy for the n8n-tdd-framework.
+> Some aspects (unit testing with Jest) have been implemented, while others (performance testing,
+> compatibility matrix testing) remain planned for future releases.
+
 This document outlines the comprehensive testing strategy for the n8n-tdd-framework npm package to ensure reliability, compatibility, and performance.
 
 ## Testing Goals

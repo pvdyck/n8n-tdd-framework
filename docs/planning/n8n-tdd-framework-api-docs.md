@@ -1,6 +1,6 @@
-# API Documentation Strategy for n8n-tdd-framework
+# API Documentation Guidelines for n8n-tdd-framework
 
-This document outlines the approach for creating comprehensive API documentation for the n8n-tdd-framework npm package.
+This document outlines the approach for creating and maintaining API documentation for the n8n-tdd-framework.
 
 ## Documentation Goals
 
