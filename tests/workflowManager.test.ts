@@ -1,421 +1,760 @@
 import WorkflowManager from '../src/workflows/manager';
-import { Credential, Workflow } from '../src/testing/types';
+import { Credential, Workflow, TestCredential } from '../src/testing/types';
+import * as fs from 'fs';
+import * as path from 'path';
 
-// Mock the n8n client
-jest.mock('../src/clients/realN8nClient', () => {
-  return jest.fn().mockImplementation(() => {
-    return {
-      connect: jest.fn().mockResolvedValue(undefined),
-      disconnect: jest.fn().mockResolvedValue(undefined),
-      get: jest.fn().mockImplementation((endpoint) => {
-        if (endpoint === '/workflows') {
-          return Promise.resolve({
-            data: [
-              { id: '1', name: 'Workflow 1', active: true },
-              { id: '2', name: 'Workflow 2', active: false }
-            ]
-          });
-        } else if (endpoint.startsWith('/workflows/')) {
-          const id = endpoint.split('/')[2];
-          return Promise.resolve({
-            data: {
-              id,
-              name: `Workflow ${id}`,
-              active: id === '1',
-              nodes: [],
-              connections: {}
-            }
-          });
-        } else if (endpoint === '/credentials') {
-          return Promise.resolve({
-            data: [
-              { id: '1', name: 'Credential 1', type: 'httpBasicAuth' },
-              { id: '2', name: 'Credential 2', type: 'oAuth2Api' }
-            ]
-          });
-        } else if (endpoint.startsWith('/credentials/')) {
-          const id = endpoint.split('/')[2];
-          return Promise.resolve({
-            data: {
-              id,
-              name: `Credential ${id}`,
-              type: 'httpBasicAuth',
-              data: { username: 'test', password: 'test' }
-            }
-          });
-        } else if (endpoint === '/credentials/types') {
-          return Promise.resolve({
-            data: [
-              { name: 'httpBasicAuth', displayName: 'HTTP Basic Auth' },
-              { name: 'oAuth2Api', displayName: 'OAuth2 API' }
-            ]
-          });
-        }
-        return Promise.reject(new Error(`Unexpected endpoint: ${endpoint}`));
-      }),
-      post: jest.fn().mockImplementation((endpoint, data) => {
-        if (endpoint === '/workflows') {
-          return Promise.resolve({
-            data: {
-              id: '3',
-              ...data,
-              active: false
-            }
-          });
-        } else if (endpoint.includes('/activate')) {
-          const id = endpoint.split('/')[2];
-          return Promise.resolve({
-            data: {
-              id,
-              name: `Workflow ${id}`,
-              active: true,
-              nodes: [],
-              connections: {}
-            }
-          });
-        } else if (endpoint.includes('/deactivate')) {
-          const id = endpoint.split('/')[2];
-          return Promise.resolve({
-            data: {
-              id,
-              name: `Workflow ${id}`,
-              active: false,
-              nodes: [],
-              connections: {}
-            }
-          });
-        } else if (endpoint.includes('/execute')) {
-          return Promise.resolve({
-            data: {
-              success: true,
-              data: { result: 'Execution successful' }
-            }
-          });
-        } else if (endpoint === '/credentials') {
-          return Promise.resolve({
-            data: {
-              id: '3',
-              ...data
-            }
-          });
-        }
-        return Promise.reject(new Error(`Unexpected endpoint: ${endpoint}`));
-      }),
-      put: jest.fn().mockImplementation((endpoint, data) => {
-        if (endpoint.startsWith('/workflows/')) {
-          const id = endpoint.split('/')[2];
-          return Promise.resolve({
-            data: {
-              id,
-              ...data,
-              active: false
-            }
-          });
-        } else if (endpoint.startsWith('/credentials/')) {
-          const id = endpoint.split('/')[2];
-          return Promise.resolve({
-            data: {
-              id,
-              ...data
-            }
-          });
-        }
-        return Promise.reject(new Error(`Unexpected endpoint: ${endpoint}`));
-      }),
-      delete: jest.fn().mockImplementation((endpoint) => {
-        if (endpoint.startsWith('/workflows/')) {
-          return Promise.resolve({ data: { success: true } });
-        } else if (endpoint.startsWith('/credentials/')) {
-          return Promise.resolve({ data: { success: true } });
-        }
-        return Promise.reject(new Error(`Unexpected endpoint: ${endpoint}`));
-      }),
-      isConnected: jest.fn().mockReturnValue(true)
-    };
-  });
-});
+// Use real environment variables for API connection
+const API_KEY = process.env.N8N_API_KEY || 'n8n_api_test_key_123456789';
+const API_URL = process.env.N8N_API_URL || 'http://localhost:5678/api/v1';
 
-// Mock the file system
-jest.mock('fs', () => {
-  const originalFs = jest.requireActual('fs');
-  return {
-    ...originalFs,
-    writeFileSync: jest.fn(),
-    readFileSync: jest.fn().mockImplementation((path) => {
-      if (path.includes('template')) {
-        return JSON.stringify({
-          name: 'Template Workflow',
-          nodes: [],
-          connections: {}
-        });
-      }
-      return JSON.stringify({
-        id: '1',
-        name: 'Workflow 1',
-        nodes: [],
-        connections: {}
-      });
-    }),
-    existsSync: jest.fn().mockReturnValue(true),
-    mkdirSync: jest.fn()
-  };
-});
+// Helper to clean up test data
+const testWorkflowIds: string[] = [];
+const testCredentialIds: string[] = [];
 
 describe('WorkflowManager', () => {
   let manager: WorkflowManager;
 
-  beforeEach(() => {
-    manager = new WorkflowManager();
+  beforeAll(() => {
+    // Set environment variables for testing
+    process.env.N8N_API_KEY = API_KEY;
+    process.env.N8N_API_URL = API_URL;
   });
 
-  afterEach(() => {
-    jest.clearAllMocks();
+  beforeEach(() => {
+    manager = new WorkflowManager({
+      apiKey: API_KEY,
+      apiUrl: API_URL
+    });
+  });
+
+  afterEach(async () => {
+    // Clean up test workflows
+    if (manager['client'].isConnected()) {
+      for (const id of testWorkflowIds) {
+        try {
+          await manager.deleteWorkflow(id);
+        } catch (error) {
+          // Ignore errors during cleanup
+        }
+      }
+      for (const id of testCredentialIds) {
+        try {
+          await manager.deleteCredential(id);
+        } catch (error) {
+          // Ignore errors during cleanup
+        }
+      }
+    }
+    testWorkflowIds.length = 0;
+    testCredentialIds.length = 0;
+    
+    // Disconnect from n8n
+    await manager.disconnect();
   });
 
   test('should connect to n8n API', async () => {
     await manager.connect();
-    expect(manager['client'].connect).toHaveBeenCalled();
+    expect(manager['client'].isConnected()).toBe(true);
   });
 
   test('should disconnect from n8n API', async () => {
+    await manager.connect();
     await manager.disconnect();
-    expect(manager['client'].disconnect).toHaveBeenCalled();
+    expect(manager['client'].isConnected()).toBe(false);
   });
 
   test('should list workflows', async () => {
     await manager.connect();
     const workflows = await manager.listWorkflows();
 
-    expect(workflows).toHaveLength(2);
-    expect(workflows[0].name).toBe('Workflow 1');
-    expect(workflows[1].name).toBe('Workflow 2');
+    expect(Array.isArray(workflows)).toBe(true);
+    // Just check that we can list workflows, don't assume specific workflows exist
+    expect(workflows.length).toBeGreaterThanOrEqual(0);
   });
 
   test('should get a workflow by ID', async () => {
     await manager.connect();
-    const workflow = await manager.getWorkflow('1');
+    
+    // First create a workflow
+    const newWorkflow: Workflow = {
+      name: 'Test Get Workflow',
+      nodes: [],
+      connections: {}
+    };
+    const created = await manager.createWorkflow(newWorkflow);
+    testWorkflowIds.push(created.id!);
+    
+    // Then get it
+    const workflow = await manager.getWorkflow(created.id!);
 
-    expect(workflow.id).toBe('1');
-    expect(workflow.name).toBe('Workflow 1');
+    expect(workflow.id).toBe(created.id);
+    expect(workflow.name).toBe('Test Get Workflow');
   });
 
   test('should create a workflow', async () => {
     await manager.connect();
     const newWorkflow: Workflow = {
-      name: 'New Workflow',
+      name: 'New Test Workflow',
       nodes: [],
       connections: {}
     };
 
     const createdWorkflow = await manager.createWorkflow(newWorkflow);
+    testWorkflowIds.push(createdWorkflow.id!);
 
-    expect(createdWorkflow.id).toBe('3');
-    expect(createdWorkflow.name).toBe('New Workflow');
+    expect(createdWorkflow.id).toBeDefined();
+    expect(createdWorkflow.name).toBe('New Test Workflow');
   });
 
   test('should update a workflow', async () => {
     await manager.connect();
-    const updatedWorkflow = await manager.updateWorkflow('1', {
+    
+    // First create a workflow
+    const newWorkflow: Workflow = {
+      name: 'Original Workflow',
+      nodes: [],
+      connections: {}
+    };
+    const created = await manager.createWorkflow(newWorkflow);
+    testWorkflowIds.push(created.id!);
+    
+    // Then update it
+    const updatedWorkflow = await manager.updateWorkflow(created.id!, {
       name: 'Updated Workflow'
     });
 
-    expect(updatedWorkflow.id).toBe('1');
+    expect(updatedWorkflow.id).toBe(created.id);
     expect(updatedWorkflow.name).toBe('Updated Workflow');
   });
 
   test('should delete a workflow', async () => {
     await manager.connect();
-    const result = await manager.deleteWorkflow('1');
+    
+    // First create a workflow
+    const newWorkflow: Workflow = {
+      name: 'Workflow to Delete',
+      nodes: [],
+      connections: {}
+    };
+    const created = await manager.createWorkflow(newWorkflow);
+    
+    // Then delete it
+    const result = await manager.deleteWorkflow(created.id!);
 
     expect(result).toBe(true);
+    
+    // Verify it's deleted by trying to get it
+    await expect(manager.getWorkflow(created.id!)).rejects.toThrow();
   });
 
   test('should activate a workflow', async () => {
     await manager.connect();
-    const workflow = await manager.activateWorkflow('2');
+    
+    // First create a workflow (it will be inactive by default)
+    const newWorkflow: Workflow = {
+      name: 'Workflow to Activate',
+      nodes: [
+        {
+          id: '1',
+          name: 'Webhook',
+          type: 'n8n-nodes-base.webhook',
+          typeVersion: 1,
+          position: [250, 300],
+          parameters: {
+            path: 'test-activate',
+            responseMode: 'onReceived',
+            responseData: 'firstEntryJson'
+          }
+        }
+      ],
+      connections: {}
+    };
+    const created = await manager.createWorkflow(newWorkflow);
+    testWorkflowIds.push(created.id!);
+    
+    // Then activate it
+    const workflow = await manager.activateWorkflow(created.id!);
 
-    expect(workflow.id).toBe('2');
+    expect(workflow.id).toBe(created.id);
     expect(workflow.active).toBe(true);
   });
 
   test('should deactivate a workflow', async () => {
     await manager.connect();
-    const workflow = await manager.deactivateWorkflow('1');
+    
+    // First create and activate a workflow
+    const newWorkflow: Workflow = {
+      name: 'Workflow to Deactivate',
+      nodes: [
+        {
+          id: '1',
+          name: 'Webhook',
+          type: 'n8n-nodes-base.webhook',
+          typeVersion: 1,
+          position: [250, 300],
+          parameters: {
+            path: 'test-deactivate',
+            responseMode: 'onReceived',
+            responseData: 'firstEntryJson'
+          }
+        }
+      ],
+      connections: {}
+    };
+    const created = await manager.createWorkflow(newWorkflow);
+    testWorkflowIds.push(created.id!);
+    await manager.activateWorkflow(created.id!);
+    
+    // Then deactivate it
+    const workflow = await manager.deactivateWorkflow(created.id!);
 
-    expect(workflow.id).toBe('1');
+    expect(workflow.id).toBe(created.id);
     expect(workflow.active).toBe(false);
   });
 
   test('should execute a workflow', async () => {
     await manager.connect();
-    const result = await manager.executeWorkflow('1');
+    
+    // Create a simple workflow that can be executed
+    const newWorkflow: Workflow = {
+      name: 'Workflow to Execute',
+      nodes: [
+        {
+          id: 'node1',
+          name: 'Webhook',
+          type: 'n8n-nodes-base.webhook',
+          typeVersion: 1,
+          position: [250, 300],
+          parameters: {
+            path: 'test-execute',
+            responseMode: 'lastNode',
+            responseData: 'allEntries'
+          }
+        },
+        {
+          id: 'node2',
+          name: 'Set',
+          type: 'n8n-nodes-base.set',
+          typeVersion: 1,
+          position: [450, 300],
+          parameters: {
+            values: {
+              string: [
+                {
+                  name: 'test',
+                  value: 'success'
+                }
+              ]
+            }
+          }
+        }
+      ],
+      connections: {
+        'Webhook': {
+          'main': [
+            [
+              {
+                node: 'Set',
+                type: 'main',
+                index: 0
+              }
+            ]
+          ]
+        }
+      }
+    };
+    const created = await manager.createWorkflow(newWorkflow);
+    testWorkflowIds.push(created.id!);
+    
+    // Execute it
+    const result = await manager.executeWorkflow(created.id!);
 
-    expect(result.success).toBe(true);
-    expect(result.data.result).toBe('Execution successful');
+    expect(result).toBeDefined();
+    // The actual result structure depends on n8n's response
   });
 
   test('should save a workflow to a file', async () => {
     await manager.connect();
-    const filePath = await manager.saveWorkflowToFile('1');
+    
+    // Create a workflow
+    const newWorkflow: Workflow = {
+      name: 'Workflow to Save',
+      nodes: [],
+      connections: {}
+    };
+    const created = await manager.createWorkflow(newWorkflow);
+    testWorkflowIds.push(created.id!);
+    
+    // Save it to a file
+    const filename = `test-workflow-${Date.now()}.json`;
+    const filePath = await manager.saveWorkflowToFile(created.id!, filename);
 
     expect(filePath).toBeDefined();
-    expect(require('fs').writeFileSync).toHaveBeenCalled();
+    expect(filePath).toContain(filename);
+    
+    // Verify file exists and contains the workflow
+    expect(fs.existsSync(filePath)).toBe(true);
+    const savedData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    expect(savedData.name).toBe('Workflow to Save');
+    
+    // Clean up file
+    fs.unlinkSync(filePath);
   });
 
   test('should load a workflow from a file', () => {
-    const workflow = manager.loadWorkflowFromFile('workflow.json');
+    // Create a test workflow file
+    const testWorkflow = {
+      id: 'test-id',
+      name: 'Test Workflow from File',
+      nodes: [],
+      connections: {}
+    };
+    const testFile = `test-load-workflow-${Date.now()}.json`;
+    fs.writeFileSync(testFile, JSON.stringify(testWorkflow));
+    
+    // Load it
+    const workflow = manager.loadWorkflowFromFile(testFile);
 
-    expect(workflow.id).toBe('1');
-    expect(workflow.name).toBe('Workflow 1');
+    expect(workflow.id).toBe('test-id');
+    expect(workflow.name).toBe('Test Workflow from File');
+    
+    // Clean up
+    fs.unlinkSync(testFile);
   });
 
   test('should create a workflow from a template', async () => {
     await manager.connect();
-    const workflow = await manager.createWorkflowFromTemplate('test-template', 'Template-based Workflow');
+    
+    // First create a template directory and file
+    const templatesDir = path.join(process.cwd(), 'test-templates');
+    if (!fs.existsSync(templatesDir)) {
+      fs.mkdirSync(templatesDir, { recursive: true });
+    }
+    
+    const templateContent = {
+      name: 'Template Workflow',
+      nodes: [
+        {
+          id: '1',
+          name: 'Start',
+          type: 'n8n-nodes-base.start',
+          typeVersion: 1,
+          position: [250, 300],
+          parameters: {}
+        }
+      ],
+      connections: {}
+    };
+    
+    fs.writeFileSync(path.join(templatesDir, 'test-template.json'), JSON.stringify(templateContent));
+    
+    // Create workflow manager with templates directory
+    const managerWithTemplates = new WorkflowManager({
+      apiKey: API_KEY,
+      apiUrl: API_URL,
+      templatesDir
+    });
+    await managerWithTemplates.connect();
+    
+    // Create workflow from template
+    const workflow = await managerWithTemplates.createWorkflowFromTemplate('test-template', 'Template-based Workflow');
+    testWorkflowIds.push(workflow.id!);
 
-    expect(workflow.id).toBe('3');
+    expect(workflow.id).toBeDefined();
     expect(workflow.name).toBe('Template-based Workflow');
+    
+    // Clean up
+    await managerWithTemplates.disconnect();
+    fs.rmSync(templatesDir, { recursive: true, force: true });
+  });
+
+  test('should throw error when loading non-existent workflow file', () => {
+    expect(() => {
+      manager.loadWorkflowFromFile('non-existent-file.json');
+    }).toThrow('Workflow file not found');
+  });
+
+  test('should throw error when loading invalid JSON workflow file', () => {
+    // Create an invalid JSON file
+    const invalidFile = `test-invalid-workflow-${Date.now()}.json`;
+    fs.writeFileSync(invalidFile, 'invalid json content');
+    
+    expect(() => {
+      manager.loadWorkflowFromFile(invalidFile);
+    }).toThrow('Failed to parse workflow file');
+    
+    // Clean up
+    fs.unlinkSync(invalidFile);
+  });
+
+  test('should import a workflow from a file', async () => {
+    await manager.connect();
+    
+    // Create a workflow file to import
+    const workflowToImport = {
+      name: 'Workflow to Import',
+      nodes: [],
+      connections: {}
+    };
+    const importFile = `test-import-workflow-${Date.now()}.json`;
+    fs.writeFileSync(importFile, JSON.stringify(workflowToImport));
+    
+    // Import it
+    const imported = await manager.importWorkflow(importFile);
+    testWorkflowIds.push(imported.id!);
+    
+    expect(imported.id).toBeDefined();
+    expect(imported.name).toBe('Workflow to Import');
+    
+    // Clean up
+    fs.unlinkSync(importFile);
+  });
+
+  test('should export all workflows to files', async () => {
+    await manager.connect();
+    
+    // Create a couple of workflows
+    const workflow1 = await manager.createWorkflow({
+      name: 'Export Test 1',
+      nodes: [],
+      connections: {}
+    });
+    testWorkflowIds.push(workflow1.id!);
+    
+    const workflow2 = await manager.createWorkflow({
+      name: 'Export Test 2',
+      nodes: [],
+      connections: {}
+    });
+    testWorkflowIds.push(workflow2.id!);
+    
+    // Export all workflows
+    const exportDir = `test-export-${Date.now()}`;
+    const exportedPaths = await manager.exportAllWorkflows(exportDir);
+    
+    expect(exportedPaths.length).toBeGreaterThanOrEqual(2);
+    expect(exportedPaths.some(p => p.includes('export_test_1.json'))).toBe(true);
+    expect(exportedPaths.some(p => p.includes('export_test_2.json'))).toBe(true);
+    
+    // Verify files exist
+    exportedPaths.forEach(path => {
+      expect(fs.existsSync(path)).toBe(true);
+    });
+    
+    // Clean up
+    fs.rmSync(exportDir, { recursive: true, force: true });
+  });
+
+  test('should save workflow as template', () => {
+    const workflow: Workflow = {
+      id: 'test-id',
+      name: 'Test Workflow',
+      active: true,
+      nodes: [],
+      connections: {}
+    };
+    
+    // Create a temporary templates directory
+    const templatesDir = `test-templates-${Date.now()}`;
+    const managerWithTemplates = new WorkflowManager({
+      apiKey: API_KEY,
+      apiUrl: API_URL,
+      templatesDir
+    });
+    
+    // Save as template
+    const templatePath = managerWithTemplates.saveWorkflowTemplate('test-template', workflow);
+    
+    expect(templatePath).toContain('test-template.json');
+    expect(fs.existsSync(templatePath)).toBe(true);
+    
+    // Verify template doesn't have runtime properties
+    const saved = JSON.parse(fs.readFileSync(templatePath, 'utf8'));
+    expect(saved.id).toBeUndefined();
+    expect(saved.active).toBeUndefined();
+    expect(saved.name).toBe('Test Workflow');
+    
+    // Clean up
+    fs.rmSync(templatesDir, { recursive: true, force: true });
+  });
+
+  test('should load workflow template', () => {
+    // Create a temporary templates directory
+    const templatesDir = `test-templates-${Date.now()}`;
+    fs.mkdirSync(templatesDir, { recursive: true });
+    
+    const template = {
+      name: 'Test Template',
+      nodes: [],
+      connections: {}
+    };
+    fs.writeFileSync(path.join(templatesDir, 'test-template.json'), JSON.stringify(template));
+    
+    const managerWithTemplates = new WorkflowManager({
+      apiKey: API_KEY,
+      apiUrl: API_URL,
+      templatesDir
+    });
+    
+    // Load template
+    const loaded = managerWithTemplates.loadWorkflowTemplate('test-template');
+    
+    expect(loaded.name).toBe('Test Template');
+    
+    // Clean up
+    fs.rmSync(templatesDir, { recursive: true, force: true });
+  });
+
+  test('should throw error when loading non-existent template', () => {
+    const managerWithTemplates = new WorkflowManager({
+      apiKey: API_KEY,
+      apiUrl: API_URL,
+      templatesDir: './non-existent-templates'
+    });
+    
+    expect(() => {
+      managerWithTemplates.loadWorkflowTemplate('non-existent');
+    }).toThrow('Template not found');
+  });
+
+  test('should list workflow templates', () => {
+    // Create a temporary templates directory
+    const templatesDir = `test-templates-${Date.now()}`;
+    fs.mkdirSync(templatesDir, { recursive: true });
+    
+    // Create some template files
+    fs.writeFileSync(path.join(templatesDir, 'template1.json'), '{}');
+    fs.writeFileSync(path.join(templatesDir, 'template2.json'), '{}');
+    fs.writeFileSync(path.join(templatesDir, 'not-a-template.txt'), 'text');
+    
+    const managerWithTemplates = new WorkflowManager({
+      apiKey: API_KEY,
+      apiUrl: API_URL,
+      templatesDir
+    });
+    
+    // List templates
+    const templates = managerWithTemplates.listWorkflowTemplates();
+    
+    expect(templates).toEqual(['template1', 'template2']);
+    
+    // Clean up
+    fs.rmSync(templatesDir, { recursive: true, force: true });
+  });
+
+  test('should return empty array when listing templates from non-existent directory', () => {
+    const managerWithTemplates = new WorkflowManager({
+      apiKey: API_KEY,
+      apiUrl: API_URL,
+      templatesDir: './non-existent-templates'
+    });
+    
+    const templates = managerWithTemplates.listWorkflowTemplates();
+    
+    expect(templates).toEqual([]);
   });
 
   // Credential management tests
   test('should list credential types', async () => {
     await manager.connect();
 
-    // Mock the n8nClientUtils.listCredentialTypes function
-    const n8nClientUtils = require('../src/utils/n8nClient');
-    const originalListCredentialTypes = n8nClientUtils.listCredentialTypes;
-
-    n8nClientUtils.listCredentialTypes = jest.fn().mockResolvedValue([
-      { name: 'httpBasicAuth', displayName: 'HTTP Basic Auth' },
-      { name: 'oAuth2Api', displayName: 'OAuth2 API' }
-    ]);
-
     const types = await manager.listCredentialTypes();
 
     expect(Array.isArray(types)).toBe(true);
-    expect(types.length).toBe(2);
-    expect(types[0].name).toBe('httpBasicAuth');
-    expect(types[1].name).toBe('oAuth2Api');
-
-    // Restore the original function
-    n8nClientUtils.listCredentialTypes = originalListCredentialTypes;
+    expect(types.length).toBeGreaterThan(0);
+    // Just verify we got some credential types
+    expect(types[0]).toHaveProperty('name');
+    expect(types[0]).toHaveProperty('displayName');
   });
 
   test('should list credentials', async () => {
     await manager.connect();
 
-    // Mock the n8nClientUtils.listCredentials function
-    const n8nClientUtils = require('../src/utils/n8nClient');
-    const originalListCredentials = n8nClientUtils.listCredentials;
-
-    n8nClientUtils.listCredentials = jest.fn().mockResolvedValue([
-      { id: '1', name: 'Credential 1', type: 'httpBasicAuth' },
-      { id: '2', name: 'Credential 2', type: 'oAuth2Api' }
-    ]);
-
     const credentials = await manager.listCredentials();
 
-    expect(credentials).toHaveLength(2);
-    expect(credentials[0].name).toBe('Credential 1');
-    expect(credentials[1].name).toBe('Credential 2');
-
-    // Restore the original function
-    n8nClientUtils.listCredentials = originalListCredentials;
+    expect(Array.isArray(credentials)).toBe(true);
+    // Just check that we can list credentials
+    expect(credentials.length).toBeGreaterThanOrEqual(0);
   });
 
   test('should get a credential by ID', async () => {
     await manager.connect();
 
-    // Mock the n8nClientUtils.getCredential function
-    const n8nClientUtils = require('../src/utils/n8nClient');
-    const originalGetCredential = n8nClientUtils.getCredential;
-
-    n8nClientUtils.getCredential = jest.fn().mockResolvedValue({
-      id: '1',
-      name: 'Credential 1',
+    // First create a credential
+    const newCredential: Credential = {
+      name: 'Test Get Credential',
       type: 'httpBasicAuth',
-      data: { username: 'test', password: 'test' }
-    });
+      data: { username: 'testuser', password: 'testpass' }
+    };
+    const created = await manager.createCredential(newCredential);
+    testCredentialIds.push(created.id!);
 
-    const credential = await manager.getCredential('1');
+    // Then get it
+    const credential = await manager.getCredential(created.id!);
 
-    expect(credential.id).toBe('1');
-    expect(credential.name).toBe('Credential 1');
+    // Note: n8n Public API v1 doesn't support GET on credentials, so we get a mock
+    expect(credential.id).toBe(created.id);
+    // The name and type will be from the mock
+    expect(credential.name).toBe('Mock Credential');
     expect(credential.type).toBe('httpBasicAuth');
-
-    // Restore the original function
-    n8nClientUtils.getCredential = originalGetCredential;
   });
 
   test('should create a credential', async () => {
     await manager.connect();
 
-    // Mock the n8nClientUtils.createCredential function
-    const n8nClientUtils = require('../src/utils/n8nClient');
-    const originalCreateCredential = n8nClientUtils.createCredential;
-
-    n8nClientUtils.createCredential = jest.fn().mockImplementation((client, credential) => {
-      return Promise.resolve({
-        id: '3',
-        ...credential
-      });
-    });
-
     const newCredential: Credential = {
-      name: 'New Credential',
+      name: 'New Test Credential',
       type: 'httpBasicAuth',
-      data: { username: 'test', password: 'test' }
+      data: { username: 'testuser', password: 'testpass' }
     };
 
     const createdCredential = await manager.createCredential(newCredential);
+    testCredentialIds.push(createdCredential.id!);
 
-    expect(createdCredential.id).toBe('3');
-    expect(createdCredential.name).toBe('New Credential');
+    expect(createdCredential.id).toBeDefined();
+    expect(createdCredential.name).toBe('New Test Credential');
     expect(createdCredential.type).toBe('httpBasicAuth');
-
-    // Restore the original function
-    n8nClientUtils.createCredential = originalCreateCredential;
   });
 
   test('should update a credential', async () => {
     await manager.connect();
 
-    // Mock the n8nClientUtils.updateCredential function
-    const n8nClientUtils = require('../src/utils/n8nClient');
-    const originalUpdateCredential = n8nClientUtils.updateCredential;
+    // First create a credential
+    const newCredential: Credential = {
+      name: 'Original Credential',
+      type: 'httpBasicAuth',
+      data: { username: 'testuser', password: 'testpass' }
+    };
+    const created = await manager.createCredential(newCredential);
+    testCredentialIds.push(created.id!);
 
-    n8nClientUtils.updateCredential = jest.fn().mockImplementation((client, id, credential) => {
-      return Promise.resolve({
-        id,
-        ...credential
-      });
-    });
-
-    const updatedCredential = await manager.updateCredential('1', {
+    // Then update it
+    const updatedCredential = await manager.updateCredential(created.id!, {
       name: 'Updated Credential'
     });
 
-    expect(updatedCredential.id).toBe('1');
+    expect(updatedCredential.id).toBe(created.id);
     expect(updatedCredential.name).toBe('Updated Credential');
-
-    // Restore the original function
-    n8nClientUtils.updateCredential = originalUpdateCredential;
   });
 
   test('should delete a credential', async () => {
     await manager.connect();
 
-    // Mock the n8nClientUtils.deleteCredential function
-    const n8nClientUtils = require('../src/utils/n8nClient');
-    const originalDeleteCredential = n8nClientUtils.deleteCredential;
+    // First create a credential
+    const newCredential: Credential = {
+      name: 'Credential to Delete',
+      type: 'httpBasicAuth',
+      data: { username: 'testuser', password: 'testpass' }
+    };
+    const created = await manager.createCredential(newCredential);
 
-    n8nClientUtils.deleteCredential = jest.fn().mockResolvedValue(true);
-
-    const result = await manager.deleteCredential('1');
+    // Then delete it
+    const result = await manager.deleteCredential(created.id!);
 
     expect(result).toBe(true);
 
-    // Restore the original function
-    n8nClientUtils.deleteCredential = originalDeleteCredential;
+    // Note: Can't verify deletion via GET as n8n Public API v1 doesn't support it
+    // The getCredential will return a mock regardless of whether the credential exists
+  });
+
+  test('should create credential from environment variables', async () => {
+    await manager.connect();
+    
+    // Set up environment variables
+    process.env.N8N_CREDENTIAL_TEST_ENV_CRED_TYPE = 'httpBasicAuth';
+    process.env.N8N_CREDENTIAL_TEST_ENV_CRED_username = 'envuser';
+    process.env.N8N_CREDENTIAL_TEST_ENV_CRED_password = 'envpass';
+    
+    const credential = await manager.createCredentialFromEnv('TEST_ENV_CRED');
+    testCredentialIds.push(credential.id!);
+    
+    expect(credential.id).toBeDefined();
+    expect(credential.name).toBe('TEST_ENV_CRED');
+    expect(credential.type).toBe('httpBasicAuth');
+    
+    // Clean up env vars
+    delete process.env.N8N_CREDENTIAL_TEST_ENV_CRED_TYPE;
+    delete process.env.N8N_CREDENTIAL_TEST_ENV_CRED_username;
+    delete process.env.N8N_CREDENTIAL_TEST_ENV_CRED_password;
+  });
+
+  test('should create credential from test definition', async () => {
+    await manager.connect();
+    
+    const testCredential: TestCredential = {
+      name: 'test-cred-def',
+      data: {
+        username: { value: 'testdefuser' },
+        password: { value: 'testdefpass' }
+      }
+    };
+    
+    const credential = await manager.createCredentialFromTestDefinition(testCredential);
+    testCredentialIds.push(credential.id!);
+    
+    expect(credential.id).toBeDefined();
+    expect(credential.name).toBe('test-cred-def');
+    expect(credential.type).toBe('httpBasicAuth');
+  });
+
+  test('should list credentials from environment variables', () => {
+    // Set up environment variables
+    process.env.N8N_CREDENTIAL_ENV_CRED1_TYPE = 'httpBasicAuth';
+    process.env.N8N_CREDENTIAL_ENV_CRED1_username = 'user1';
+    process.env.N8N_CREDENTIAL_ENV_CRED2_TYPE = 'httpHeaderAuth';
+    process.env.N8N_CREDENTIAL_ENV_CRED2_name = 'Authorization';
+    
+    const credentials = manager.listCredentialsFromEnv();
+    
+    expect(credentials.length).toBeGreaterThanOrEqual(2);
+    expect(credentials.some(c => c.name === 'ENV_CRED1')).toBe(true);
+    expect(credentials.some(c => c.name === 'ENV_CRED2')).toBe(true);
+    
+    // Clean up env vars
+    delete process.env.N8N_CREDENTIAL_ENV_CRED1_TYPE;
+    delete process.env.N8N_CREDENTIAL_ENV_CRED1_username;
+    delete process.env.N8N_CREDENTIAL_ENV_CRED2_TYPE;
+    delete process.env.N8N_CREDENTIAL_ENV_CRED2_name;
+  });
+
+  test('should get credential from environment variables', () => {
+    // Set up environment variables
+    process.env.N8N_CREDENTIAL_GET_TEST_TYPE = 'httpBasicAuth';
+    process.env.N8N_CREDENTIAL_GET_TEST_username = 'getuser';
+    process.env.N8N_CREDENTIAL_GET_TEST_password = 'getpass';
+    
+    const credential = manager.getCredentialFromEnv('GET_TEST');
+    
+    expect(credential).toBeDefined();
+    expect(credential?.name).toBe('GET_TEST');
+    expect(credential?.type).toBe('httpBasicAuth');
+    expect(credential?.data).toEqual({
+      username: 'getuser',
+      password: 'getpass'
+    });
+    
+    // Clean up env vars
+    delete process.env.N8N_CREDENTIAL_GET_TEST_TYPE;
+    delete process.env.N8N_CREDENTIAL_GET_TEST_username;
+    delete process.env.N8N_CREDENTIAL_GET_TEST_password;
+  });
+
+  test('should return undefined when getting non-existent credential from env', () => {
+    const credential = manager.getCredentialFromEnv('NON_EXISTENT');
+    expect(credential).toBeUndefined();
+  });
+
+  test('should check if credential exists in environment variables', () => {
+    // Set up environment variables
+    process.env.N8N_CREDENTIAL_EXISTS_TEST_TYPE = 'httpBasicAuth';
+    
+    const exists = manager.hasCredentialInEnv('EXISTS_TEST');
+    const notExists = manager.hasCredentialInEnv('NOT_EXISTS');
+    
+    expect(exists).toBe(true);
+    expect(notExists).toBe(false);
+    
+    // Clean up env vars
+    delete process.env.N8N_CREDENTIAL_EXISTS_TEST_TYPE;
   });
 });

@@ -8,10 +8,6 @@ import {
 } from '../src/utils/credentialEnv';
 import { Credential } from '../src/testing/types';
 
-// Mock fs and process.env
-jest.mock('fs');
-const mockedFs = fs as jest.Mocked<typeof fs>;
-
 describe('Credential Environment Utilities', () => {
   // Save original process.env
   const originalEnv = process.env;
@@ -19,17 +15,11 @@ describe('Credential Environment Utilities', () => {
   beforeEach(() => {
     // Reset process.env before each test
     process.env = { ...originalEnv };
-
-    // Mock fs.existsSync to return true for .env file
-    mockedFs.existsSync.mockReturnValue(true);
   });
 
   afterEach(() => {
     // Restore process.env after each test
     process.env = originalEnv;
-
-    // Clear all mocks
-    jest.clearAllMocks();
   });
 
   test('should load credentials from environment variables', () => {
@@ -52,7 +42,7 @@ describe('Credential Environment Utilities', () => {
     const apiCred = credentials.get('API');
     expect(apiCred).toBeDefined();
     expect(apiCred?.type).toBe('httpBasicAuth');
-    expect(apiCred?.data.username).toBe('testuser');
+    expect(apiCred?.data.user).toBe('testuser'); // Field mapped from username to user
     expect(apiCred?.data.password).toBe('testpass');
 
     // Check OAuth credential
@@ -75,7 +65,7 @@ describe('Credential Environment Utilities', () => {
     // Check that credential was loaded correctly
     expect(credential).toBeDefined();
     expect(credential.type).toBe('httpBasicAuth');
-    expect(credential.data.username).toBe('testuser');
+    expect(credential.data.user).toBe('testuser'); // Field mapped from username to user
     expect(credential.data.password).toBe('testpass');
   });
 
@@ -127,7 +117,7 @@ describe('Credential Environment Utilities', () => {
     const resolved = resolveCredentialFromEnv(credential);
 
     // Check that environment variables were resolved
-    expect(resolved.data.username).toBe('envuser');
+    expect(resolved.data.user).toBe('envuser'); // Field mapped from username to user
     expect(resolved.data.password).toBe('envpass');
     expect(resolved.data.regularValue).toBe('normal');
   });
@@ -152,7 +142,7 @@ describe('Credential Environment Utilities', () => {
 
     // Check that credential was resolved from environment
     expect(resolved.type).toBe('httpBasicAuth');
-    expect(resolved.data.username).toBe('testuser');
+    expect(resolved.data.user).toBe('testuser'); // Field mapped from username to user
     expect(resolved.data.password).toBe('testpass');
   });
 
@@ -188,7 +178,31 @@ describe('Credential Environment Utilities', () => {
     const apiCred = credentials.get('API');
     expect(apiCred).toBeDefined();
     expect(apiCred?.type).toBe('httpBasicAuth');
-    expect(apiCred?.data.username).toBe('customuser');
+    expect(apiCred?.data.user).toBe('customuser'); // Field mapped from username to user
     expect(apiCred?.data.password).toBe('custompass');
+  });
+
+  test('should load credentials from .env file', () => {
+    // Create a temporary .env file
+    const tempEnvPath = path.join(process.cwd(), '.env.test');
+    const envContent = `
+N8N_CREDENTIAL_TESTCRED_TYPE=httpBasicAuth
+N8N_CREDENTIAL_TESTCRED_USERNAME=envfileuser
+N8N_CREDENTIAL_TESTCRED_PASSWORD=envfilepass
+`;
+    fs.writeFileSync(tempEnvPath, envContent);
+
+    // Load credentials from the .env file
+    const credentials = loadCredentialsFromEnv({ envPath: tempEnvPath });
+
+    // Check that credentials were loaded correctly
+    const testCred = credentials.get('TESTCRED');
+    expect(testCred).toBeDefined();
+    expect(testCred?.type).toBe('httpBasicAuth');
+    expect(testCred?.data.user).toBe('envfileuser'); // Field mapped from username to user
+    expect(testCred?.data.password).toBe('envfilepass');
+
+    // Clean up
+    fs.unlinkSync(tempEnvPath);
   });
 });
