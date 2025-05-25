@@ -57,3 +57,20 @@ lerna-debug.log*
 
 # Test results
 test-results.json
+
+# Local configuration
+n8n-tdd-config.json
+n8n-tdd-config.json.backup
+
+# Local n8n data
+n8n_data/
+
+# AI assistant files
+.claude/
+
+# Development scripts
+run-docker-tests.js
+setup-n8n-instance.js
+
+# Temporary directories
+temp-config-test/
