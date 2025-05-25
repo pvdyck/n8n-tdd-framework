@@ -20,10 +20,6 @@
     "prepare": "npm run build",
     "test": "jest --config jest.config.js",
     "test:coverage": "jest --config jest.config.js --coverage",
-    "test:coverage:check": "node dist/testing/coverage/utils/thresholdChecker.js",
-    "test:coverage:dashboard": "node dist/testing/coverage/dashboard/dashboardGenerator.js",
-    "test:coverage:dashboard:static": "open public/static-dashboard.html",
-    "test:coverage:clean": "node dist/testing/coverage/utils/fileManager.js clean",
     "lint": "eslint 'src/**/*.ts'",
     "lint:fix": "eslint 'src/**/*.ts' --fix",
     "prepublishOnly": "npm test",
@@ -41,14 +37,6 @@
   ],
   "author": "pvdyck",
   "license": "ISC",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/pvdyck/n8n-tdd-framework"
-  },
-  "bugs": {
-    "url": "https://github.com/pvdyck/n8n-tdd-framework/issues"
-  },
-  "homepage": "https://github.com/pvdyck/n8n-tdd-framework#readme",
   "dependencies": {
     "ajv": "^8.12.0",
     "ajv-formats": "^2.1.1",
