@@ -1,12 +1,34 @@
 # n8n-tdd-framework
 
-A Test-Driven Development framework for n8n workflows.
+A Test-Driven Development framework for n8n workflows that provides a standardized approach to testing n8n automation workflows.
+
+## Overview
+
+The n8n-tdd-framework transforms n8n workflow development by providing:
+- **Consistent Testing Methodology**: Standardized approach across all n8n projects
+- **Simplified Installation**: One-command installation via npm
+- **Centralized Maintenance**: Bug fixes and improvements benefit all projects
+- **Professional Development Workflow**: CI/CD integration and semantic versioning
 
 ## Installation
 
 ```bash
 npm install n8n-tdd-framework
 ```
+
+## Key Benefits
+
+### For Development Teams
+- **Reduced Setup Time**: New projects operational in minutes instead of hours
+- **Focus on Business Logic**: Teams concentrate on workflow logic rather than testing infrastructure
+- **Knowledge Sharing**: Common framework facilitates team collaboration
+- **Best Practices**: Encapsulates n8n testing best practices
+
+### For Project Maintainers
+- **Clear Separation**: Framework code isolated from project implementations
+- **Version Control**: Semantic versioning for predictable updates
+- **Automated Deployment**: CI/CD pipeline for reliable releases
+- **Community Support**: Open source collaboration and issue tracking
 
 ## Features
 
@@ -487,9 +509,46 @@ const workflow = await manager.createWorkflowFromTemplate(
 );
 ```
 
+## Project Structure
+
+```
+n8n-tdd-framework/
+├── src/                    # Source code
+│   ├── clients/           # n8n API clients
+│   ├── config/            # Configuration management
+│   ├── docker/            # Docker management
+│   ├── interfaces/        # TypeScript interfaces
+│   ├── workflows/         # Workflow management
+│   │   └── testing/       # Declarative testing
+│   └── index.ts          # Main exports
+├── bin/                   # CLI executable
+├── templates/             # Built-in workflow templates
+├── examples/              # Usage examples
+└── tests/                 # Framework tests
+```
+
+## Documentation
+
+For more information, see:
+- [API Documentation](./docs/planning/n8n-tdd-framework-api-docs.md) - Detailed API reference
+- [Testing Strategy](./docs/planning/n8n-tdd-framework-testing-strategy.md) - Testing approach and guidelines
+- [CI/CD Strategy](./n8n-tdd-framework-cicd.md) - Continuous integration setup
+- [Contributing Guidelines](./CONTRIBUTING.md) - How to contribute
+- [Changelog](./CHANGELOG.md) - Release history
+
+## Roadmap
+
+Upcoming features:
+- **Coverage Tracking**: Workflow execution coverage reports
+- **Parallel Testing**: Run multiple tests concurrently
+- **Enhanced Templates**: Expanded template library
+- **Plugin System**: Extensible architecture for custom functionality
+
+See [Development Roadmap](./n8n-tdd-framework-next-steps.md) for details.
+
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please see our [Contributing Guidelines](./CONTRIBUTING.md) for details.
 
 ## License
 
