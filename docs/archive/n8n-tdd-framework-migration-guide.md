@@ -290,4 +290,4 @@ const manager = new ExtendedWorkflowManager();
 
 Migrating to the npm package version of the framework offers significant benefits in terms of maintainability, updates, and standardization. While the migration process requires some changes to your codebase, the long-term advantages make it worthwhile.
 
-If you encounter any issues during migration, consult the [documentation](https://github.com/yourusername/n8n-tdd-framework) or open an issue on the GitHub repository.
+If you encounter any issues during migration, consult the [documentation](https://github.com/pvdyck/n8n-tdd-framework) or open an issue on the GitHub repository.

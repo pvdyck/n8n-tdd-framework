@@ -112,7 +112,7 @@ Edit the package.json file to match the following structure:
   "license": "ISC",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/n8n-tdd-framework"
+    "url": "https://github.com/pvdyck/n8n-tdd-framework"
   },
   "dependencies": {
     "ajv": "^8.12.0",
