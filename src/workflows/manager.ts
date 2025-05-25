@@ -6,6 +6,7 @@ import { Credential, Workflow, TestCredential } from '../testing/types';
 import * as n8nClientUtils from '../utils/n8nClient';
 import { getConfig } from '../config/config';
 import { listCredentialsFromEnv, getCredentialFromEnv } from '../utils/credentialEnv';
+import { validateWorkflow, assertWorkflowValid } from './validator';
 
 /**
  * Options for the WorkflowManager
@@ -88,9 +89,13 @@ export default class WorkflowManager {
    * Create a new workflow
    *
    * @param workflow - Workflow to create
+   * @param skipValidation - Skip workflow validation (default: false)
    * @returns The created workflow
    */
-  async createWorkflow(workflow: Workflow): Promise<Workflow> {
+  async createWorkflow(workflow: Workflow, skipValidation = false): Promise<Workflow> {
+    if (!skipValidation) {
+      assertWorkflowValid(workflow);
+    }
     return n8nClientUtils.createWorkflow(this.client, workflow);
   }
 
@@ -140,9 +145,24 @@ export default class WorkflowManager {
    *
    * @param id - Workflow ID
    * @param data - Input data
+   * @param validateBeforeExecution - Validate workflow before execution (default: true)
    * @returns The execution result
    */
-  async executeWorkflow(id: string, data?: any): Promise<any> {
+  async executeWorkflow(id: string, data?: any, validateBeforeExecution = true): Promise<any> {
+    if (validateBeforeExecution) {
+      // Fetch and validate the workflow before execution
+      const workflow = await this.getWorkflow(id);
+      const validationResult = validateWorkflow(workflow);
+      
+      if (!validationResult.valid) {
+        throw new Error(`Workflow validation failed: ${validationResult.errors.join('; ')}`);
+      }
+      
+      if (validationResult.warnings.length > 0) {
+        console.warn(`Workflow validation warnings: ${validationResult.warnings.join('; ')}`);
+      }
+    }
+    
     return n8nClientUtils.executeWorkflow(this.client, id, data);
   }
 
@@ -424,5 +444,26 @@ export default class WorkflowManager {
    */
   async deleteCredential(id: string): Promise<boolean> {
     return n8nClientUtils.deleteCredential(this.client, id);
+  }
+
+  /**
+   * Validate a workflow
+   *
+   * @param workflow - Workflow to validate
+   * @returns Validation result with errors and warnings
+   */
+  validateWorkflow(workflow: Workflow) {
+    return validateWorkflow(workflow);
+  }
+
+  /**
+   * Validate a workflow by ID
+   *
+   * @param id - Workflow ID
+   * @returns Validation result with errors and warnings
+   */
+  async validateWorkflowById(id: string) {
+    const workflow = await this.getWorkflow(id);
+    return validateWorkflow(workflow);
   }
 }
