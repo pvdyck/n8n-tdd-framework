@@ -13,6 +13,15 @@ This document serves as a comprehensive index of all documentation for the n8n-t
 | [CHANGELOG.md](./CHANGELOG.md) | Release history and changes |
 | [CLAUDE.md](./CLAUDE.md) | AI assistant guidelines for working with this codebase |
 
+## Test-Driven Development (TDD) Documentation
+
+| Document | Description | Type |
+|----------|-------------|------|
+| [TDD Methodology](./docs/n8n-tdd-methodology.md) | Complete guide to TDD for n8n workflows | Guide |
+| [Step-by-Step Tutorial](./docs/tutorials/tdd-step-by-step.md) | Build a workflow using TDD from scratch | Tutorial |
+| [TDD Best Practices](./docs/tdd-best-practices.md) | Patterns and anti-patterns for n8n TDD | Reference |
+| [Weather Alert Example](./examples/tdd-example/README.md) | Complete TDD example project | Example |
+
 ## Overview Documents
 
 | Document | Description | Status |

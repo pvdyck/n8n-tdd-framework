@@ -5,10 +5,22 @@ A Test-Driven Development framework for n8n workflows that provides a standardiz
 ## Overview
 
 The n8n-tdd-framework transforms n8n workflow development by providing:
+- **Test-Driven Development**: Write tests first, then build workflows that pass
 - **Consistent Testing Methodology**: Standardized approach across all n8n projects
 - **Simplified Installation**: One-command installation via npm
 - **Centralized Maintenance**: Bug fixes and improvements benefit all projects
 - **Professional Development Workflow**: CI/CD integration and semantic versioning
+
+## What is TDD for n8n?
+
+Test-Driven Development (TDD) for n8n means writing tests BEFORE creating your workflows. This approach ensures:
+
+1. **Clear Requirements** - Tests define what the workflow should do
+2. **Early Error Detection** - Catch issues before deployment
+3. **Confident Refactoring** - Improve workflows without breaking functionality
+4. **Living Documentation** - Tests document expected behavior
+
+Learn more: [TDD Methodology Guide](./docs/n8n-tdd-methodology.md) | [Step-by-Step Tutorial](./docs/tutorials/tdd-step-by-step.md)
 
 ## Installation
 
@@ -188,24 +200,52 @@ const createdCredential = await manager.createCredential(credential);
 
 This allows you to reference sensitive information stored in environment variables without hardcoding them in your application.
 
-### Declarative Testing
+### Test-Driven Workflow Development
 
+Follow the TDD cycle: Red → Green → Refactor
+
+#### 1. Write a Test First (Red)
+```json
+// tests/customer-sync.json
+{
+  "name": "Should sync customer to CRM",
+  "input": {
+    "email": "new@customer.com",
+    "name": "New Customer"
+  },
+  "assertions": [{
+    "description": "Should create customer in CRM",
+    "assertion": "result.crmId !== undefined"
+  }]
+}
+```
+
+#### 2. Create Workflow to Pass Test (Green)
+```typescript
+// Implement minimal workflow that makes the test pass
+const workflow = await manager.createWorkflowFromTemplate(
+  'customer_sync',
+  'Customer Sync Workflow'
+);
+```
+
+#### 3. Run Tests and Refactor
 ```typescript
 import { DeclarativeTestRunner } from 'n8n-tdd-framework';
 
-// Create a test runner
 const runner = new DeclarativeTestRunner({
   templatesDir: './templates',
   testsDir: './tests'
 });
 
-// Run tests from a file
-const results = await runner.runTestsFromFile('./tests/my-test.json');
+// Run tests to ensure they pass
+const results = await runner.runTestsFromFile('./tests/customer-sync.json');
 console.log(`Tests: ${results.passed}/${results.total} passed`);
 
-// Run all tests in a directory
-const allResults = await runner.runTestsFromDirectory('./tests');
+// Now safe to refactor and optimize
 ```
+
+### Declarative Testing
 
 Example test file (JSON):
 
@@ -529,7 +569,12 @@ n8n-tdd-framework/
 
 ## Documentation
 
-For more information, see:
+### TDD Resources
+- [TDD Methodology for n8n](./docs/n8n-tdd-methodology.md) - Complete guide to Test-Driven Development with n8n
+- [Step-by-Step TDD Tutorial](./docs/tutorials/tdd-step-by-step.md) - Build a complete workflow using TDD
+- [TDD Example Project](./examples/tdd-example/README.md) - Weather alert system built with TDD
+
+### Technical Documentation
 - [API Documentation](./docs/planning/n8n-tdd-framework-api-docs.md) - Detailed API reference
 - [Testing Strategy](./docs/planning/n8n-tdd-framework-testing-strategy.md) - Testing approach and guidelines
 - [CI/CD Strategy](./n8n-tdd-framework-cicd.md) - Continuous integration setup
