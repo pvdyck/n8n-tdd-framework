@@ -11,13 +11,17 @@ npm install n8n-tdd-framework
 ## Features
 
 - Create, read, update, and delete n8n workflows
-- Manage n8n credentials securely
+- Manage n8n credentials securely with environment variables
 - Import and export workflows to/from files
-- Template-based workflow creation
-- Declarative workflow testing
-- Comprehensive coverage tracking and reporting
+- Template-based workflow creation with built-in templates
+- Declarative workflow testing with JSON configuration
 - Docker management for n8n instances
-- CI/CD integration
+- Command-line interface (CLI)
+- Automatic retry logic with exponential backoff
+- Rate limiting to prevent API overload
+- Comprehensive error handling with custom error types
+- Workflow validation before execution
+- Built-in workflow templates for common patterns
 
 ## Usage
 
@@ -277,54 +281,6 @@ console.log(`API accessible: ${status.apiAccessible}`);
 await dockerManager.stop();
 ```
 
-### Coverage Tracking
-
-The framework provides comprehensive coverage tracking for n8n workflows:
-
-```typescript
-import {
-  DeclarativeTestRunner,
-  CoverageTracker,
-  CoverageOptions
-} from 'n8n-tdd-framework';
-
-// Create a coverage tracker
-const coverageOptions: CoverageOptions = {
-  enabled: true,
-  format: 'all', // 'console', 'json', 'html', or 'all'
-  outputDir: './coverage',
-  thresholds: {
-    nodes: 80,
-    connections: 70,
-    branches: 60
-  },
-  dashboard: {
-    enabled: true,
-    outputDir: './public'
-  }
-};
-
-const coverageTracker = new CoverageTracker(coverageOptions);
-
-// Create a test runner with coverage tracking
-const runner = new DeclarativeTestRunner({
-  templatesDir: './templates',
-  testsDir: './tests',
-  coverageTracker
-});
-
-// Run tests with coverage
-const results = await runner.runTestsFromFile('./tests/my-test.json');
-
-// Generate coverage report
-coverageTracker.generateReport();
-
-// Check if coverage meets thresholds
-const coverageData = coverageTracker.getCoverageData();
-console.log(`Node Coverage: ${coverageData.summary.overallNodeCoverage.toFixed(2)}%`);
-console.log(`Connection Coverage: ${coverageData.summary.overallConnectionCoverage.toFixed(2)}%`);
-console.log(`Branch Coverage: ${coverageData.summary.overallBranchCoverage.toFixed(2)}%`);
-```
 
 ### CLI Usage
 
@@ -334,29 +290,28 @@ The framework includes a CLI for managing workflows:
 # Install globally
 npm install -g n8n-tdd-framework
 
-# List all workflows
-n8n-tdd list
+# Workflow commands
+n8n-tdd list                           # List all workflows
+n8n-tdd get <id>                       # Get workflow details
+n8n-tdd create <name> [template]       # Create a new workflow
+n8n-tdd delete <id>                    # Delete a workflow
+n8n-tdd activate <id>                  # Activate a workflow
+n8n-tdd deactivate <id>                # Deactivate a workflow
+n8n-tdd execute <id> [data]            # Execute a workflow
+n8n-tdd export <id> [filename]         # Export a workflow to a file
+n8n-tdd export-all [directory]         # Export all workflows to files
+n8n-tdd import <filepath>              # Import a workflow from a file
+n8n-tdd save-template <id> <name>      # Save a workflow as a template
+n8n-tdd list-templates                 # List available templates
 
-# Create a workflow from a template
-n8n-tdd create "My Workflow" http_request
+# Test command
+n8n-tdd test <filepath>                # Run declarative tests from a file
 
-# Execute a workflow
-n8n-tdd execute workflow-id
-
-# Run tests
-n8n-tdd test ./tests/my-test.json
-
-# Coverage commands
-n8n-tdd coverage:check                # Check coverage thresholds
-n8n-tdd coverage:dashboard            # Generate coverage dashboard
-n8n-tdd coverage:clean                # Clean up coverage files
-
-# Docker commands
-n8n-tdd docker:start                  # Start n8n Docker container
-n8n-tdd docker:stop                   # Stop n8n Docker container
-n8n-tdd docker:restart                # Restart n8n Docker container
-n8n-tdd docker:status                 # Get n8n Docker container status
-n8n-tdd docker:help                   # Show Docker help
+# Docker commands (via separate Docker CLI)
+n8n-tdd docker start                   # Start n8n Docker container
+n8n-tdd docker stop                    # Stop n8n Docker container
+n8n-tdd docker restart                 # Restart n8n Docker container
+n8n-tdd docker status                  # Get n8n Docker container status
 ```
 
 ## Configuration
@@ -368,9 +323,6 @@ The framework can be configured using:
    - `N8N_API_KEY`: API key for authentication
    - `N8N_TEMPLATES_DIR`: Directory for workflow templates
    - `N8N_TESTS_DIR`: Directory for test files
-   - `N8N_COVERAGE_ENABLED`: Enable coverage tracking (true/false)
-   - `N8N_COVERAGE_FORMAT`: Coverage report format (console/json/html/all)
-   - `N8N_COVERAGE_OUTPUT_DIR`: Directory for coverage reports
    - `N8N_CONTAINER_NAME`: Docker container name
    - `N8N_IMAGE`: Docker image for n8n
    - `N8N_PORT`: Port to expose n8n on
@@ -381,16 +333,6 @@ The framework can be configured using:
      "apiUrl": "http://localhost:5678/api/v1",
      "templatesDir": "./templates",
      "testsDir": "./tests",
-     "coverage": {
-       "enabled": true,
-       "format": "all",
-       "outputDir": "./coverage",
-       "thresholds": {
-         "nodes": 80,
-         "connections": 70,
-         "branches": 60
-       }
-     },
      "docker": {
        "containerName": "n8n",
        "image": "n8nio/n8n",
@@ -440,10 +382,11 @@ The `WorkflowManager` class provides methods for managing n8n workflows and cred
 - `listCredentialTypes()`: List all credential types
 - `listCredentials()`: List all credentials
 - `getCredential(id: string)`: Get a credential by ID
-- `createCredential(credential: Credential)`: Create a new credential (environment variables are always resolved)
-- `updateCredential(id: string, credential: Partial<Credential>)`: Update a credential (environment variables are always resolved)
+- `createCredential(credential: Credential)`: Create a new credential (environment variables are automatically resolved)
+- `updateCredential(id: string, credential: Partial<Credential>)`: Update a credential (environment variables are automatically resolved)
 - `deleteCredential(id: string)`: Delete a credential
 - `createCredentialFromEnv(name: string, options?: { envPrefix?: string; envPath?: string })`: Create a credential from environment variables
+- `createCredentialFromTestDefinition(testCredential: TestCredential)`: Create a credential from a test definition
 - `listCredentialsFromEnv(options?: { envPrefix?: string; envPath?: string })`: List all credentials from environment variables
 - `getCredentialFromEnv(name: string, options?: { envPrefix?: string; envPath?: string })`: Get a credential from environment variables
 - `hasCredentialInEnv(name: string, options?: { envPrefix?: string; envPath?: string })`: Check if a credential exists in environment variables
@@ -468,16 +411,81 @@ The `DeclarativeTestRunner` class provides methods for running declarative tests
 - `runTestsFromFile(filePath: string)`: Run tests from a file
 - `runTestsFromDirectory(dirPath?: string)`: Run tests from a directory
 
-### CoverageTracker
+## Advanced Features
 
-The `CoverageTracker` class provides methods for tracking and reporting coverage:
+### Error Handling
 
-- `addTestResult(testResult: TestResultWithCoverage)`: Add a test result with coverage
-- `addTestResults(testResults: TestResultWithCoverage[])`: Add multiple test results with coverage
-- `merge(tracker: CoverageTracker)`: Merge coverage data from another tracker
-- `getCoverageData()`: Get coverage data
-- `generateReport()`: Generate coverage report
-- `saveCoverageData()`: Save coverage data to file
+The framework provides custom error classes for better error handling:
+
+```typescript
+import { WorkflowManager, WorkflowError, ValidationError } from 'n8n-tdd-framework';
+
+try {
+  await manager.createWorkflow(workflow);
+} catch (error) {
+  if (error instanceof ValidationError) {
+    console.error('Workflow validation failed:', error.details);
+  } else if (error instanceof WorkflowError) {
+    console.error('Workflow operation failed:', error.message);
+  }
+}
+```
+
+### Retry Logic
+
+API calls automatically retry with exponential backoff:
+
+```typescript
+const manager = new WorkflowManager({
+  // Customize retry behavior
+  maxRetries: 5,
+  initialDelay: 2000
+});
+```
+
+### Rate Limiting
+
+The client includes built-in rate limiting:
+
+```typescript
+const client = new N8nClient({
+  maxRequestsPerMinute: 30 // Default is 60
+});
+```
+
+### Workflow Validation
+
+Validate workflows before execution:
+
+```typescript
+const validationResult = manager.validateWorkflow(workflow);
+if (!validationResult.valid) {
+  console.error('Errors:', validationResult.errors);
+  console.warn('Warnings:', validationResult.warnings);
+}
+
+// Validation is automatic during creation/execution
+await manager.createWorkflow(workflow); // Throws ValidationError if invalid
+```
+
+### Built-in Templates
+
+The framework includes several workflow templates:
+
+- `webhook-to-email`: Webhook trigger that sends email notifications
+- `scheduled-backup`: Daily scheduled backup workflow
+- `api-health-check`: API health monitoring with alerts
+- `data-transformation`: ETL pipeline for data processing
+- `error-handler`: Global error handling workflow
+
+Use templates:
+
+```typescript
+const workflow = await manager.createWorkflowFromTemplate(
+  'api-health-check',
+  'My Health Monitor'
+);
+```
 
 ## Contributing
 

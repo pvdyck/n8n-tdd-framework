@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Comprehensive error handling with custom error classes
+  - `N8nTddError`, `ConnectionError`, `WorkflowError`, `ValidationError`, etc.
+  - Better error messages with contextual information
+- Automatic retry logic with exponential backoff
+  - Configurable retry attempts and delays
+  - Smart retry for transient failures (network errors, 5xx errors, rate limits)
+- Rate limiting to prevent API overload
+  - Token bucket algorithm with configurable requests per minute
+  - Automatic queuing of requests when rate limit is reached
+- Workflow validation before execution
+  - Validates node structure, connections, and dependencies
+  - Detects circular dependencies and isolated nodes
+  - Provides detailed errors and warnings
+- Built-in workflow templates
+  - `webhook-to-email`: Webhook trigger with email notifications
+  - `scheduled-backup`: Daily backup automation
+  - `api-health-check`: API monitoring with alerts
+  - `data-transformation`: ETL pipeline template
+  - `error-handler`: Global error handling workflow
+
+### Changed
+- Enhanced RealN8nClient with retry and rate limiting
+- WorkflowManager now validates workflows by default on creation and execution
+- Improved TypeScript types and exports
+
+### Fixed
+- Better handling of API errors and network failures
+- More reliable connection management
+
 ## [0.13.0] - 2025-05-01
 
 ### Added
