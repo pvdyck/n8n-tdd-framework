@@ -5,12 +5,22 @@ import * as path from 'path';
 describe('Config', () => {
   const originalEnv = process.env;
   const originalCwd = process.cwd();
+  const fixturesDir = path.join(__dirname, 'fixtures/config');
+  
+  beforeAll(() => {
+    // Ensure fixtures directory exists
+    if (!fs.existsSync(fixturesDir)) {
+      fs.mkdirSync(fixturesDir, { recursive: true });
+    }
+  });
   
   beforeEach(() => {
     // Reset environment variables
     process.env = { ...originalEnv };
     // Clear the config cache
     (global as any).__n8nTddConfig = undefined;
+    // Clear require cache for config module
+    delete require.cache[require.resolve('../src/config/config')];
   });
 
   afterEach(() => {
@@ -18,6 +28,19 @@ describe('Config', () => {
     process.chdir(originalCwd);
     // Clear the config cache
     (global as any).__n8nTddConfig = undefined;
+    // Clear require cache for config module
+    delete require.cache[require.resolve('../src/config/config')];
+    
+    // Clean up any test files created in fixtures directory
+    if (fs.existsSync(fixturesDir)) {
+      const files = fs.readdirSync(fixturesDir);
+      files.forEach(file => {
+        const filePath = path.join(fixturesDir, file);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      });
+    }
   });
 
   describe('getConfig', () => {

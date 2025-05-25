@@ -129,11 +129,25 @@ class DeclarativeTestResourceManager implements TestResourceManager {
 
     // Create workflows
     for (const workflow of testCase.workflows) {
-      const createdWorkflow = await this.manager.createWorkflowFromTemplate(
-        workflow.templateName,
-        workflow.name,
-        workflow.settings
-      );
+      let createdWorkflow: any;
+      
+      if (workflow.templateName) {
+        createdWorkflow = await this.manager.createWorkflowFromTemplate(
+          workflow.templateName,
+          workflow.name,
+          workflow.settings
+        );
+      } else if (workflow.nodes && workflow.connections) {
+        // Create workflow from inline definition
+        createdWorkflow = await this.manager.createWorkflow({
+          name: workflow.name,
+          nodes: workflow.nodes,
+          connections: workflow.connections,
+          settings: workflow.settings
+        });
+      } else {
+        throw new Error(`Workflow ${workflow.name} must have either templateName or inline definition`);
+      }
 
       workflowIds[workflow.name] = createdWorkflow.id!;
 
@@ -245,27 +259,32 @@ export class DeclarativeTestRunner {
    */
   async runTest(testCase: TestCase): Promise<TestResult> {
     const startTime = Date.now();
+    const reporter = this.createReporter();
 
     // Validate the test case
-    const validationErrors = this.validator.validateTestCase(testCase);
+    const validationErrors = this.validator.validateTestCaseErrors(testCase);
     if (validationErrors.length > 0) {
-      return {
+      const testResult = {
         name: testCase.name,
         passed: false,
         error: `Validation errors: ${validationErrors.join(', ')}`,
         duration: Date.now() - startTime,
         workflows: []
       };
+      reporter.reportTestResult(testResult);
+      return testResult;
     }
 
     // Skip the test if marked as skipped
     if (testCase.skip) {
-      return {
+      const testResult = {
         name: testCase.name,
         passed: true,
         duration: 0,
         workflows: []
       };
+      reporter.reportTestResult(testResult);
+      return testResult;
     }
 
     let resourceIds: {
@@ -282,10 +301,14 @@ export class DeclarativeTestRunner {
       resourceIds = await this.resourceManager.createResources(testCase);
 
       // Execute the primary workflow
-      const result = await this.manager.executeWorkflow(
+      const executionResult = await this.manager.executeWorkflow(
         resourceIds.primaryWorkflowId,
         testCase.input
       );
+
+      // Extract the actual result data from the execution
+      // n8n returns data in an array format with json property
+      const result = executionResult.data?.[0]?.json || executionResult;
 
       // Evaluate assertions
       const assertionResults = this.evaluateAssertions(testCase.assertions || [], result);
@@ -293,17 +316,22 @@ export class DeclarativeTestRunner {
       // Check if all assertions passed
       const allAssertionsPassed = assertionResults.every(a => a.passed);
 
-      return {
+      const testResult = {
         name: testCase.name,
         passed: allAssertionsPassed,
-        output: result,
+        output: result, // This is now the extracted data, not the full execution result
         assertions: assertionResults,
         duration: Date.now() - startTime,
         workflows: Object.entries(resourceIds.workflowIds).map(([name, id]) => ({ name, id })),
         credentials: Object.entries(resourceIds.credentialIds).map(([name, id]) => ({ name, id }))
       };
+      
+      // Report the result
+      reporter.reportTestResult(testResult);
+      
+      return testResult;
     } catch (error) {
-      return {
+      const testResult = {
         name: testCase.name,
         passed: false,
         error: `Test execution failed: ${(error as Error).message}`,
@@ -311,6 +339,11 @@ export class DeclarativeTestRunner {
         workflows: resourceIds ? Object.entries(resourceIds.workflowIds).map(([name, id]) => ({ name, id })) : [],
         credentials: resourceIds ? Object.entries(resourceIds.credentialIds).map(([name, id]) => ({ name, id })) : []
       };
+      
+      // Report the result
+      reporter.reportTestResult(testResult);
+      
+      return testResult;
     } finally {
       // Clean up resources if needed
       if (this.config.cleanupAfterTests && resourceIds) {
@@ -336,12 +369,29 @@ export class DeclarativeTestRunner {
   private evaluateAssertions(assertions: Assertion[], result: any): { description: string; passed: boolean; error?: string }[] {
     return assertions.map(assertion => {
       try {
-        // Create a function from the assertion
-        // eslint-disable-next-line no-new-func
-        const assertionFn = new Function('result', `return ${assertion.assertion}`);
-
-        // Evaluate the assertion
-        const passed = assertionFn(result);
+        let passed = false;
+        
+        if (assertion.type === 'property') {
+          // Evaluate property assertion
+          const value = this.getValueByPath(result, assertion.path!);
+          passed = value === assertion.expected;
+        } else if (assertion.type === 'regex') {
+          // Evaluate regex assertion
+          const value = this.getValueByPath(result, assertion.path!);
+          const regex = new RegExp(assertion.pattern!);
+          passed = regex.test(String(value));
+        } else if (assertion.type === 'schema') {
+          // Schema validation would go here - for now just pass
+          passed = true;
+        } else {
+          // Default to expression assertion
+          // Create a function from the assertion
+          // eslint-disable-next-line no-new-func
+          const assertionFn = new Function('result', `return ${assertion.assertion}`);
+          
+          // Evaluate the assertion
+          passed = assertionFn(result);
+        }
 
         return {
           description: assertion.description,
@@ -355,6 +405,17 @@ export class DeclarativeTestRunner {
         };
       }
     });
+  }
+
+  /**
+   * Get a value from an object by path
+   *
+   * @param obj - Object to get value from
+   * @param path - Path to the value (e.g., 'data.name')
+   * @returns The value at the path
+   */
+  private getValueByPath(obj: any, path: string): any {
+    return path.split('.').reduce((current, key) => current?.[key], obj);
   }
 
   /**

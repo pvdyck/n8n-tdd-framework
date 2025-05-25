@@ -87,6 +87,11 @@ export interface TestValidator {
   validateTestCase(testCase: TestCase): string[];
   
   /**
+   * Alternative method for backward compatibility
+   */
+  validateTestCaseErrors(testCase: TestCase): string[];
+  
+  /**
    * Validate a test workflow
    * 
    * @param workflow - Test workflow to validate

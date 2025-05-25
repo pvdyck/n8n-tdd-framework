@@ -27,7 +27,7 @@ describe('DeclarativeTestValidator', () => {
         ]
       };
 
-      const result = validator.validateTestCase(testCase);
+      const result = (validator as any)._validateTestCase(testCase);
       expect(result.valid).toBe(true);
       expect(result.errors).toHaveLength(0);
     });
@@ -38,9 +38,9 @@ describe('DeclarativeTestValidator', () => {
         assertions: []
       } as any;
 
-      const result = validator.validateTestCase(testCase);
+      const result = (validator as any)._validateTestCase(testCase);
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.includes('name'))).toBe(true);
+      expect(result.errors.some((e: string) => e.includes('name'))).toBe(true);
     });
 
     test('should invalidate test case without workflows', () => {
@@ -49,9 +49,9 @@ describe('DeclarativeTestValidator', () => {
         assertions: []
       } as any;
 
-      const result = validator.validateTestCase(testCase);
+      const result = (validator as any)._validateTestCase(testCase);
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.includes('workflows'))).toBe(true);
+      expect(result.errors.some((e: string) => e.includes('workflows'))).toBe(true);
     });
 
     test('should invalidate test case with empty workflows array', () => {
@@ -61,9 +61,9 @@ describe('DeclarativeTestValidator', () => {
         assertions: []
       };
 
-      const result = validator.validateTestCase(testCase);
+      const result = (validator as any)._validateTestCase(testCase);
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.includes('at least one workflow'))).toBe(true);
+      expect(result.errors.some((e: string) => e.includes('at least one workflow'))).toBe(true);
     });
 
     test('should invalidate test case without primary workflow', () => {
@@ -84,9 +84,9 @@ describe('DeclarativeTestValidator', () => {
         assertions: []
       };
 
-      const result = validator.validateTestCase(testCase);
+      const result = (validator as any)._validateTestCase(testCase);
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.includes('primary workflow'))).toBe(true);
+      expect(result.errors.some((e: string) => e.includes('marked as primary'))).toBe(true);
     });
 
     test('should invalidate test case with multiple primary workflows', () => {
@@ -107,9 +107,9 @@ describe('DeclarativeTestValidator', () => {
         assertions: []
       };
 
-      const result = validator.validateTestCase(testCase);
+      const result = (validator as any)._validateTestCase(testCase);
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.includes('Only one workflow'))).toBe(true);
+      expect(result.errors.some((e: string) => e.includes('Only one workflow'))).toBe(true);
     });
 
     test('should validate test case with description', () => {
@@ -126,7 +126,7 @@ describe('DeclarativeTestValidator', () => {
         assertions: []
       };
 
-      const result = validator.validateTestCase(testCase);
+      const result = (validator as any)._validateTestCase(testCase);
       expect(result.valid).toBe(true);
     });
 
@@ -146,7 +146,7 @@ describe('DeclarativeTestValidator', () => {
         assertions: []
       };
 
-      const result = validator.validateTestCase(testCase);
+      const result = (validator as any)._validateTestCase(testCase);
       expect(result.valid).toBe(true);
     });
 
@@ -173,7 +173,7 @@ describe('DeclarativeTestValidator', () => {
         assertions: []
       };
 
-      const result = validator.validateTestCase(testCase);
+      const result = (validator as any)._validateTestCase(testCase);
       expect(result.valid).toBe(true);
     });
   });
@@ -185,7 +185,7 @@ describe('DeclarativeTestValidator', () => {
         assertion: 'result.status === 200'
       };
 
-      const result = validator.validateAssertion(assertion);
+      const result = (validator as any)._validateAssertion(assertion);
       expect(result.valid).toBe(true);
     });
 
@@ -197,7 +197,7 @@ describe('DeclarativeTestValidator', () => {
         expected: 'John'
       };
 
-      const result = validator.validateAssertion(assertion);
+      const result = (validator as any)._validateAssertion(assertion);
       expect(result.valid).toBe(true);
     });
 
@@ -208,9 +208,9 @@ describe('DeclarativeTestValidator', () => {
         expected: 'John'
       } as any;
 
-      const result = validator.validateAssertion(assertion);
+      const result = (validator as any)._validateAssertion(assertion);
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.includes('path'))).toBe(true);
+      expect(result.errors.some((e: string) => e.includes('path'))).toBe(true);
     });
 
     test('should invalidate property assertion without expected value', () => {
@@ -220,9 +220,9 @@ describe('DeclarativeTestValidator', () => {
         path: 'data.name'
       } as any;
 
-      const result = validator.validateAssertion(assertion);
+      const result = (validator as any)._validateAssertion(assertion);
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.includes('expected'))).toBe(true);
+      expect(result.errors.some((e: string) => e.includes('expected'))).toBe(true);
     });
 
     test('should validate regex assertion', () => {
@@ -233,7 +233,7 @@ describe('DeclarativeTestValidator', () => {
         pattern: '^[\\w-\\.]+@[\\w-]+\\.[a-z]{2,}$'
       };
 
-      const result = validator.validateAssertion(assertion);
+      const result = (validator as any)._validateAssertion(assertion);
       expect(result.valid).toBe(true);
     });
 
@@ -244,9 +244,9 @@ describe('DeclarativeTestValidator', () => {
         path: 'data.email'
       } as any;
 
-      const result = validator.validateAssertion(assertion);
+      const result = (validator as any)._validateAssertion(assertion);
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.includes('pattern'))).toBe(true);
+      expect(result.errors.some((e: string) => e.includes('pattern'))).toBe(true);
     });
 
     test('should validate schema assertion', () => {
@@ -262,7 +262,7 @@ describe('DeclarativeTestValidator', () => {
         }
       };
 
-      const result = validator.validateAssertion(assertion);
+      const result = (validator as any)._validateAssertion(assertion);
       expect(result.valid).toBe(true);
     });
 
@@ -272,9 +272,9 @@ describe('DeclarativeTestValidator', () => {
         description: 'Test schema'
       } as any;
 
-      const result = validator.validateAssertion(assertion);
+      const result = (validator as any)._validateAssertion(assertion);
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.includes('schema'))).toBe(true);
+      expect(result.errors.some((e: string) => e.includes('schema'))).toBe(true);
     });
 
     test('should invalidate assertion without description', () => {
@@ -282,9 +282,9 @@ describe('DeclarativeTestValidator', () => {
         assertion: 'result !== null'
       } as any;
 
-      const result = validator.validateAssertion(assertion);
+      const result = (validator as any)._validateAssertion(assertion);
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.includes('description'))).toBe(true);
+      expect(result.errors.some((e: string) => e.includes('description'))).toBe(true);
     });
 
     test('should invalidate expression assertion without assertion', () => {
@@ -292,9 +292,9 @@ describe('DeclarativeTestValidator', () => {
         description: 'Test'
       } as any;
 
-      const result = validator.validateAssertion(assertion);
+      const result = (validator as any)._validateAssertion(assertion);
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.includes('assertion'))).toBe(true);
+      expect(result.errors.some((e: string) => e.includes('assertion'))).toBe(true);
     });
 
     test('should invalidate unknown assertion type', () => {
@@ -303,9 +303,9 @@ describe('DeclarativeTestValidator', () => {
         description: 'Test'
       };
 
-      const result = validator.validateAssertion(assertion);
+      const result = (validator as any)._validateAssertion(assertion);
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.includes('Unknown assertion type'))).toBe(true);
+      expect(result.errors.some((e: string) => e.includes('Unknown assertion type'))).toBe(true);
     });
   });
 
@@ -317,7 +317,7 @@ describe('DeclarativeTestValidator', () => {
         isPrimary: true
       };
 
-      const result = validator.validateWorkflow(workflow);
+      const result = (validator as any).validateWorkflow(workflow);
       expect(result.valid).toBe(true);
     });
 
@@ -329,7 +329,7 @@ describe('DeclarativeTestValidator', () => {
         connections: {}
       };
 
-      const result = validator.validateWorkflow(workflow);
+      const result = (validator as any).validateWorkflow(workflow);
       expect(result.valid).toBe(true);
     });
 
@@ -339,9 +339,9 @@ describe('DeclarativeTestValidator', () => {
         isPrimary: true
       } as any;
 
-      const result = validator.validateWorkflow(workflow);
+      const result = (validator as any).validateWorkflow(workflow);
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.includes('name'))).toBe(true);
+      expect(result.errors.some((e: string) => e.includes('name'))).toBe(true);
     });
 
     test('should invalidate workflow without template or inline definition', () => {
@@ -350,9 +350,9 @@ describe('DeclarativeTestValidator', () => {
         isPrimary: true
       };
 
-      const result = validator.validateWorkflow(workflow);
+      const result = (validator as any).validateWorkflow(workflow);
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.includes('templateName or inline'))).toBe(true);
+      expect(result.errors.some((e: string) => e.includes('templateName or inline'))).toBe(true);
     });
 
     test('should validate workflow with settings', () => {
@@ -365,7 +365,7 @@ describe('DeclarativeTestValidator', () => {
         }
       };
 
-      const result = validator.validateWorkflow(workflow);
+      const result = (validator as any).validateWorkflow(workflow);
       expect(result.valid).toBe(true);
     });
   });
@@ -376,7 +376,7 @@ describe('DeclarativeTestValidator', () => {
         name: 'ENV_CREDENTIAL'
       };
 
-      const result = validator.validateCredential(credential);
+      const result = (validator as any).validateCredential(credential);
       expect(result.valid).toBe(true);
     });
 
@@ -390,7 +390,7 @@ describe('DeclarativeTestValidator', () => {
         }
       };
 
-      const result = validator.validateCredential(credential);
+      const result = (validator as any).validateCredential(credential);
       expect(result.valid).toBe(true);
     });
 
@@ -400,9 +400,9 @@ describe('DeclarativeTestValidator', () => {
         data: {}
       } as any;
 
-      const result = validator.validateCredential(credential);
+      const result = (validator as any).validateCredential(credential);
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.includes('name'))).toBe(true);
+      expect(result.errors.some((e: string) => e.includes('name'))).toBe(true);
     });
 
     test('should invalidate credential with data but no type', () => {
@@ -413,27 +413,27 @@ describe('DeclarativeTestValidator', () => {
         }
       } as any;
 
-      const result = validator.validateCredential(credential);
+      const result = (validator as any).validateCredential(credential);
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.includes('type'))).toBe(true);
+      expect(result.errors.some((e: string) => e.includes('type'))).toBe(true);
     });
   });
 
   describe('edge cases', () => {
     test('should handle null test case', () => {
-      const result = validator.validateTestCase(null as any);
+      const result = (validator as any)._validateTestCase(null as any);
       expect(result.valid).toBe(false);
       expect(result.errors.length).toBeGreaterThan(0);
     });
 
     test('should handle undefined test case', () => {
-      const result = validator.validateTestCase(undefined as any);
+      const result = (validator as any)._validateTestCase(undefined as any);
       expect(result.valid).toBe(false);
       expect(result.errors.length).toBeGreaterThan(0);
     });
 
     test('should handle malformed test case', () => {
-      const result = validator.validateTestCase('not a test case' as any);
+      const result = (validator as any)._validateTestCase('not a test case' as any);
       expect(result.valid).toBe(false);
       expect(result.errors.length).toBeGreaterThan(0);
     });
@@ -455,7 +455,7 @@ describe('DeclarativeTestValidator', () => {
         ]
       } as any;
 
-      const result = validator.validateTestCase(testCase);
+      const result = (validator as any)._validateTestCase(testCase);
       expect(result.valid).toBe(false);
       expect(result.errors.length).toBeGreaterThan(2);
     });

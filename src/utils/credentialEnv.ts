@@ -60,11 +60,57 @@ export function loadCredentialsFromEnv(options?: CredentialEnvOptions): Map<stri
   credentialVars.forEach(key => {
     // Extract credential name and property from the environment variable key
     // Format: N8N_CREDENTIAL_<NAME>_<PROPERTY>
-    const parts = key.substring(prefix.length).split('_');
+    // We need to handle both patterns:
+    // 1. N8N_CREDENTIAL_API_USERNAME (simple name, uppercase property)
+    // 2. N8N_CREDENTIAL_TEST_ENV_CRED_username (complex name, lowercase property)
+    
+    const withoutPrefix = key.substring(prefix.length);
+    const parts = withoutPrefix.split('_');
+    
     if (parts.length < 2) return;
-
-    const credentialName = parts[0];
-    const propertyName = parts.slice(1).join('_').toLowerCase();
+    
+    // Known credential properties (both uppercase and lowercase variants)
+    const knownProperties = [
+      'TYPE', 'type',
+      'USERNAME', 'username', 
+      'PASSWORD', 'password',
+      'CLIENT_ID', 'client_id',
+      'CLIENT_SECRET', 'client_secret',
+      'ACCESS_TOKEN', 'access_token',
+      'REFRESH_TOKEN', 'refresh_token',
+      'SCOPE', 'scope',
+      'HOST', 'host',
+      'PORT', 'port',
+      'DATABASE', 'database',
+      'API_KEY', 'apiKey', 'api_key'
+    ];
+    
+    // Find the property by checking from the end
+    let credentialName = '';
+    let propertyName = '';
+    
+    // Check if the last part is a known property
+    const lastPart = parts[parts.length - 1];
+    if (knownProperties.includes(lastPart)) {
+      propertyName = lastPart.toLowerCase();
+      credentialName = parts.slice(0, -1).join('_');
+    } else if (parts.length > 2) {
+      // Check if last two parts combined form a known property (e.g., CLIENT_ID)
+      const lastTwoParts = parts.slice(-2).join('_');
+      if (knownProperties.includes(lastTwoParts)) {
+        propertyName = lastTwoParts.toLowerCase();
+        credentialName = parts.slice(0, -2).join('_');
+      } else {
+        // Fallback: assume last part is property
+        propertyName = lastPart.toLowerCase();
+        credentialName = parts.slice(0, -1).join('_');
+      }
+    } else {
+      // Simple case: NAME_PROPERTY
+      credentialName = parts[0];
+      propertyName = parts.slice(1).join('_').toLowerCase();
+    }
+    
     const value = process.env[key] || '';
 
     if (!credentialGroups.has(credentialName)) {

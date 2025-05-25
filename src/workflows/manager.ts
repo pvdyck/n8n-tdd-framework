@@ -408,7 +408,7 @@ export default class WorkflowManager {
    * @returns The credential or undefined if not found
    */
   getCredentialFromEnv(name: string, options?: { envPrefix?: string; envPath?: string }): Credential | undefined {
-    return getCredentialFromEnv(name, options);
+    return getCredentialFromEnv(name, { ...options, required: false });
   }
 
   /**

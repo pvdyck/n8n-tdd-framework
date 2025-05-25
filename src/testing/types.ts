@@ -133,6 +133,11 @@ export interface TestCase {
   name: string;
 
   /**
+   * Test description
+   */
+  description?: string;
+
+  /**
    * Workflows to create for the test
    */
   workflows: TestWorkflow[];
@@ -180,7 +185,7 @@ export interface TestWorkflow {
   /**
    * Template name to use for the workflow
    */
-  templateName: string;
+  templateName?: string;
 
   /**
    * Name for the created workflow
@@ -201,6 +206,16 @@ export interface TestWorkflow {
    * Whether to activate the workflow
    */
   activate?: boolean;
+
+  /**
+   * Inline workflow nodes (alternative to templateName)
+   */
+  nodes?: WorkflowNode[];
+
+  /**
+   * Inline workflow connections (alternative to templateName)
+   */
+  connections?: Record<string, Record<string, Connection[][]>>;
 }
 
 /**
@@ -248,6 +263,16 @@ export interface TestCredential {
   name: string;
 
   /**
+   * Credential type (e.g., 'httpBasicAuth')
+   */
+  type?: string;
+
+  /**
+   * Credential data
+   */
+  data?: Record<string, any>;
+
+  /**
    * Workflow that uses this credential
    */
   usedByWorkflow?: string;
@@ -269,14 +294,39 @@ export interface TestCredential {
  */
 export interface Assertion {
   /**
+   * Type of assertion
+   */
+  type?: 'expression' | 'property' | 'regex' | 'schema';
+
+  /**
    * Description of the assertion
    */
   description: string;
 
   /**
-   * Assertion expression to evaluate
+   * Assertion expression to evaluate (for expression type)
    */
-  assertion: string;
+  assertion?: string;
+
+  /**
+   * Property path (for property/regex types)
+   */
+  path?: string;
+
+  /**
+   * Expected value (for property type)
+   */
+  expected?: any;
+
+  /**
+   * Regex pattern (for regex type)
+   */
+  pattern?: string;
+
+  /**
+   * JSON Schema (for schema type)
+   */
+  schema?: Record<string, any>;
 }
 
 /**

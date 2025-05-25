@@ -683,6 +683,7 @@ describe('WorkflowManager', () => {
     
     const testCredential: TestCredential = {
       name: 'test-cred-def',
+      type: 'httpBasicAuth',
       data: {
         username: { value: 'testdefuser' },
         password: { value: 'testdefpass' }
@@ -729,7 +730,7 @@ describe('WorkflowManager', () => {
     expect(credential?.name).toBe('GET_TEST');
     expect(credential?.type).toBe('httpBasicAuth');
     expect(credential?.data).toEqual({
-      username: 'getuser',
+      user: 'getuser',  // Field is mapped from username to user for n8n compatibility
       password: 'getpass'
     });
     
