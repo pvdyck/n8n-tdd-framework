@@ -25,7 +25,7 @@ export interface Workflow {
   /**
    * Workflow connections
    */
-  connections: Record<string, Record<string, Connection[]>>;
+  connections: Record<string, Record<string, Connection[][]>>;
 
   /**
    * Workflow settings
@@ -58,6 +58,11 @@ export interface WorkflowNode {
   type: string;
 
   /**
+   * Node type version
+   */
+  typeVersion?: number;
+
+  /**
    * Node position
    */
   position: [number, number];
@@ -71,11 +76,6 @@ export interface WorkflowNode {
    * Node credentials
    */
   credentials?: Record<string, any>;
-
-  /**
-   * Node type version
-   */
-  typeVersion?: number;
 }
 
 /**

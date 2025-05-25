@@ -43,6 +43,16 @@ export interface DeclarativeTestConfig {
    * Whether to continue running tests after a failure
    */
   continueOnFailure?: boolean;
+  
+  /**
+   * n8n API key
+   */
+  apiKey?: string;
+  
+  /**
+   * n8n API URL
+   */
+  apiUrl?: string;
 }
 
 /**
