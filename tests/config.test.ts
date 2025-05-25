@@ -83,7 +83,7 @@ describe('Config', () => {
         testsDir: './file-tests'
       };
 
-      const configPath = path.join(process.cwd(), 'test-config.json');
+      const configPath = path.join(__dirname, 'fixtures/config/test-config.json');
       fs.writeFileSync(configPath, JSON.stringify(testConfig));
 
       // Clear cached config
@@ -110,7 +110,7 @@ describe('Config', () => {
         apiKey: 'file-key'
       };
 
-      const configPath = path.join(process.cwd(), 'test-config-merge.json');
+      const configPath = path.join(__dirname, 'fixtures/config/test-config-merge.json');
       fs.writeFileSync(configPath, JSON.stringify(testConfig));
 
       // Clear cached config
@@ -139,7 +139,7 @@ describe('Config', () => {
     });
 
     test('should handle invalid JSON in config file', () => {
-      const configPath = path.join(process.cwd(), 'invalid-config.json');
+      const configPath = path.join(__dirname, 'fixtures/config/invalid-config.json');
       fs.writeFileSync(configPath, 'invalid json content');
 
       const config = loadConfig({ configPath });
@@ -166,7 +166,7 @@ describe('Config', () => {
         templatesDir: './custom-templates'
       };
 
-      const customPath = path.join(process.cwd(), 'custom-n8n-config.json');
+      const customPath = path.join(__dirname, 'fixtures/config/custom-n8n-config.json');
       fs.writeFileSync(customPath, JSON.stringify(customConfig));
 
       // Clear cached config
@@ -216,7 +216,7 @@ describe('Config', () => {
         // Other fields missing
       };
 
-      const configPath = path.join(process.cwd(), 'partial-config.json');
+      const configPath = path.join(__dirname, 'fixtures/config/partial-config.json');
       fs.writeFileSync(configPath, JSON.stringify(partialConfig));
 
       // Clear cached config
@@ -254,7 +254,7 @@ describe('Config', () => {
     });
 
     test('should handle empty config file', () => {
-      const configPath = path.join(process.cwd(), 'empty-config.json');
+      const configPath = path.join(__dirname, 'fixtures/config/empty-config.json');
       fs.writeFileSync(configPath, '{}');
 
       const config = loadConfig({ configPath });
@@ -276,7 +276,7 @@ describe('Config', () => {
         anotherExtra: 123
       };
 
-      const configPath = path.join(process.cwd(), 'extra-config.json');
+      const configPath = path.join(__dirname, 'fixtures/config/extra-config.json');
       fs.writeFileSync(configPath, JSON.stringify(configWithExtras));
 
       const config = loadConfig({ configPath });
@@ -331,7 +331,7 @@ describe('Config', () => {
         templatesDir: './file-templates'
       };
 
-      const configPath = path.join(process.cwd(), 'env-precedence-test.json');
+      const configPath = path.join(__dirname, 'fixtures/config/env-precedence-test.json');
       fs.writeFileSync(configPath, JSON.stringify(fileConfig));
 
       // Clear cached config
