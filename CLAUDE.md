@@ -1,5 +1,7 @@
 # CLAUDE.md
 
+> 🔧 **Developer Documentation** | [Contributing](./CONTRIBUTING.md) | [User Guide](./docs/README.md#-framework-user-documentation) | [Architecture](#high-level-architecture)
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Common Development Commands

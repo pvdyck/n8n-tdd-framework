@@ -2,6 +2,8 @@
 
 A Test-Driven Development framework for n8n workflows that provides a standardized approach to testing n8n automation workflows.
 
+> 📚 **Documentation**: [User Guide](./docs/README.md#-framework-user-documentation) | [Developer Guide](./docs/README.md#-framework-developer-documentation) | [Quick Start](./QUICKSTART.md)
+
 ## Overview
 
 The n8n-tdd-framework transforms n8n workflow development by providing:

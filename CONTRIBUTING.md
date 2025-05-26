@@ -1,5 +1,7 @@
 # Contributing to n8n-tdd-framework
 
+> 📌 **Note**: This guide is for contributing to the n8n-tdd-framework itself. If you're looking to use the framework to test your n8n workflows, see the [User Documentation](./docs/README.md#-framework-user-documentation).
+
 Thank you for considering contributing to n8n-tdd-framework! This document provides guidelines and instructions for contributing to this project.
 
 ## Code of Conduct
