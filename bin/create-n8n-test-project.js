@@ -413,7 +413,7 @@ global.console = {
   const templatesDir = path.join(__dirname, '../templates/project');
   if (fs.existsSync(templatesDir)) {
     copyTemplates(templatesDir, projectPath);
-    log('  ✓ Copied example templates', 'green');
+    log('  ✓ Copied example templates and CLAUDE.md', 'green');
   }
   
   // Create README.md
