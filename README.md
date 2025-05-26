@@ -61,102 +61,7 @@ npm install n8n-tdd-framework
 
 ## Usage
 
-### Basic Usage
-
-```typescript
-import { WorkflowManager } from 'n8n-tdd-framework';
-
-// Create a workflow manager
-const manager = new WorkflowManager();
-
-// Connect to n8n
-await manager.connect();
-
-// List all workflows
-const workflows = await manager.listWorkflows();
-console.log(`Found ${workflows.length} workflow(s)`);
-
-// Create a workflow
-const workflow = await manager.createWorkflow({
-  name: 'My Workflow',
-  nodes: [],
-  connections: {}
-});
-
-// Execute a workflow
-const result = await manager.executeWorkflow(workflow.id);
-
-// Disconnect from n8n
-await manager.disconnect();
-```
-
-### Workflow Templates
-
-```typescript
-import { WorkflowManager } from 'n8n-tdd-framework';
-
-const manager = new WorkflowManager({
-  templatesDir: './templates'
-});
-
-// Create a workflow from a template
-const workflow = await manager.createWorkflowFromTemplate(
-  'http_request',
-  'My HTTP Workflow'
-);
-
-// Save a workflow as a template
-await manager.saveWorkflowTemplate('my_template', workflow);
-
-// List available templates
-const templates = manager.listWorkflowTemplates();
-```
-
-### Credential Management
-
-All credentials in the framework are managed through environment variables for enhanced security. This ensures sensitive information is never hardcoded in your application.
-
-```typescript
-import { WorkflowManager } from 'n8n-tdd-framework';
-
-// Create a workflow manager
-const manager = new WorkflowManager();
-
-// Connect to n8n
-await manager.connect();
-
-// List credential types
-const credentialTypes = await manager.listCredentialTypes();
-console.log(`Available credential types: ${credentialTypes.length}`);
-
-// List all credentials from environment variables
-const envCredentials = manager.listCredentialsFromEnv();
-console.log(`Found ${envCredentials.length} credential(s) in environment variables`);
-
-// Create a credential from environment variables
-// This will look for environment variables with the prefix N8N_CREDENTIAL_API_*
-const credential = await manager.createCredentialFromEnv('API');
-console.log(`Created credential with ID: ${credential.id}`);
-
-// Check if a credential exists in environment variables
-if (manager.hasCredentialInEnv('DATABASE')) {
-  // Create the credential
-  const dbCredential = await manager.createCredentialFromEnv('DATABASE');
-}
-
-// Get a credential by ID
-const retrievedCredential = await manager.getCredential(credential.id!);
-
-// Update a credential
-await manager.updateCredential(credential.id!, {
-  name: 'Updated API Credential'
-});
-
-// Delete a credential
-await manager.deleteCredential(credential.id!);
-
-// Disconnect from n8n
-await manager.disconnect();
+See [Quick Start Guide](./QUICKSTART.md) for detailed usage instructions.
 ```
 
 #### Defining Credentials in Environment Variables
@@ -348,35 +253,7 @@ await dockerManager.stop();
 
 ### CLI Usage
 
-The framework includes a CLI for managing workflows:
-
-```bash
-# Install globally
-npm install -g n8n-tdd-framework
-
-# Workflow commands
-n8n-tdd list                           # List all workflows
-n8n-tdd get <id>                       # Get workflow details
-n8n-tdd create <name> [template]       # Create a new workflow
-n8n-tdd delete <id>                    # Delete a workflow
-n8n-tdd activate <id>                  # Activate a workflow
-n8n-tdd deactivate <id>                # Deactivate a workflow
-n8n-tdd execute <id> [data]            # Execute a workflow
-n8n-tdd export <id> [filename]         # Export a workflow to a file
-n8n-tdd export-all [directory]         # Export all workflows to files
-n8n-tdd import <filepath>              # Import a workflow from a file
-n8n-tdd save-template <id> <name>      # Save a workflow as a template
-n8n-tdd list-templates                 # List available templates
-
-# Test command
-n8n-tdd test <filepath>                # Run declarative tests from a file
-
-# Docker commands (via separate Docker CLI)
-n8n-tdd docker start                   # Start n8n Docker container
-n8n-tdd docker stop                    # Stop n8n Docker container
-n8n-tdd docker restart                 # Restart n8n Docker container
-n8n-tdd docker status                  # Get n8n Docker container status
-```
+The framework includes a CLI for managing workflows. See the [Quick Start Guide](./QUICKSTART.md) for installation and basic usage.
 
 ## Configuration
 
@@ -551,23 +428,6 @@ const workflow = await manager.createWorkflowFromTemplate(
 );
 ```
 
-## Project Structure
-
-```
-n8n-tdd-framework/
-├── src/                    # Source code
-│   ├── clients/           # n8n API clients
-│   ├── config/            # Configuration management
-│   ├── docker/            # Docker management
-│   ├── interfaces/        # TypeScript interfaces
-│   ├── workflows/         # Workflow management
-│   │   └── testing/       # Declarative testing
-│   └── index.ts          # Main exports
-├── bin/                   # CLI executable
-├── templates/             # Built-in workflow templates
-├── examples/              # Usage examples
-└── tests/                 # Framework tests
-```
 
 ## Documentation
 
@@ -577,9 +437,9 @@ n8n-tdd-framework/
 - [TDD Example Project](./examples/tdd-example/README.md) - Weather alert system built with TDD
 
 ### Technical Documentation
-- [API Documentation](./docs/planning/n8n-tdd-framework-api-docs.md) - Detailed API reference
+- [API Documentation Standards](./docs/planning/n8n-tdd-framework-api-docs.md) - API documentation guidelines
 - [Testing Strategy](./docs/planning/n8n-tdd-framework-testing-strategy.md) - Testing approach and guidelines
-- [CI/CD Strategy](./n8n-tdd-framework-cicd.md) - Continuous integration setup
+- [CI/CD Strategy](./docs/n8n-tdd-framework-cicd.md) - Continuous integration setup
 - [Contributing Guidelines](./CONTRIBUTING.md) - How to contribute
 - [Changelog](./CHANGELOG.md) - Release history
 
@@ -591,7 +451,7 @@ Upcoming features:
 - **Enhanced Templates**: Expanded template library
 - **Plugin System**: Extensible architecture for custom functionality
 
-See [Development Roadmap](./n8n-tdd-framework-next-steps.md) for details.
+See [Development Roadmap](./docs/n8n-tdd-framework-next-steps.md) for details.
 
 ## Contributing
 
