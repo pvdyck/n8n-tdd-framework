@@ -1,0 +1,39 @@
+{
+  "name": "HTTP Request Workflow Test",
+  "description": "Test the HTTP request workflow with JSONPlaceholder API",
+  "workflow": {
+    "path": "workflows/examples/http-request.json"
+  },
+  "assertions": [
+    {
+      "type": "execution",
+      "expected": {
+        "finished": true,
+        "status": "success"
+      }
+    },
+    {
+      "type": "node-output",
+      "nodeName": "HTTP Request",
+      "expected": {
+        "error": null,
+        "data": {
+          "userId": 1,
+          "id": 1,
+          "title": "*"
+        }
+      }
+    },
+    {
+      "type": "node-output",
+      "nodeName": "Set",
+      "expected": {
+        "error": null,
+        "data": {
+          "title": "*",
+          "userId": 1
+        }
+      }
+    }
+  ]
+}

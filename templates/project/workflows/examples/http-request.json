@@ -1,0 +1,74 @@
+{
+  "name": "HTTP Request Example",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "c3b5c7a0-4b9d-4e4e-8a9f-5c4b3d2e1f0a",
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://jsonplaceholder.typicode.com/posts/1",
+        "method": "GET",
+        "options": {}
+      },
+      "id": "d4c6d8e1-5f0a-4b2c-9d3e-6a5b4c3d2e1f",
+      "name": "HTTP Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "title",
+              "value": "={{ $json.title }}"
+            },
+            {
+              "name": "userId",
+              "value": "={{ $json.userId }}"
+            }
+          ]
+        }
+      },
+      "id": "e5d7e9f2-6a1b-4c3d-9e4f-7b6c5d4e3f2a",
+      "name": "Set",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [650, 300]
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Set",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "tags": ["example", "http"],
+  "triggerCount": 0
+}

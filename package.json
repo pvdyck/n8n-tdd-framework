@@ -5,11 +5,13 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "n8n-tdd": "./bin/n8n-tdd.js"
+    "n8n-tdd": "./bin/n8n-tdd.js",
+    "create-n8n-test-project": "./bin/create-n8n-test-project.js"
   },
   "files": [
     "dist",
     "bin",
+    "templates",
     "README.md",
     "LICENSE"
   ],

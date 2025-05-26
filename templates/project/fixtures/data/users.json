@@ -1,0 +1,37 @@
+[
+  {
+    "id": 1,
+    "name": "Alice Johnson",
+    "email": "alice@example.com",
+    "age": 28,
+    "department": "Engineering"
+  },
+  {
+    "id": 2,
+    "name": "Bob Smith",
+    "email": "bob@example.com",
+    "age": 35,
+    "department": "Marketing"
+  },
+  {
+    "id": 3,
+    "name": "Charlie Brown",
+    "email": "charlie@example.com",
+    "age": 42,
+    "department": "Sales"
+  },
+  {
+    "id": 4,
+    "name": "Diana Prince",
+    "email": "diana@example.com",
+    "age": 31,
+    "department": "Engineering"
+  },
+  {
+    "id": 5,
+    "name": "Eve Wilson",
+    "email": "eve@example.com",
+    "age": 29,
+    "department": "HR"
+  }
+]
