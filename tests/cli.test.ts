@@ -2,10 +2,12 @@ import WorkflowCLI from '../src/workflows/cli';
 import WorkflowManager from '../src/workflows/manager';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as dockerCommands from '../src/cli/commands/docker';
 
 // Mock dependencies
 jest.mock('../src/workflows/manager');
 jest.mock('fs');
+jest.mock('../src/cli/commands/docker');
 
 describe('WorkflowCLI', () => {
   let cli: WorkflowCLI;
@@ -294,6 +296,53 @@ describe('WorkflowCLI', () => {
       await cli.run(['create', 'My Workflow']);
       
       expect(mockManager.createWorkflow).toHaveBeenCalled();
+    });
+  });
+
+  describe('docker commands', () => {
+    beforeEach(() => {
+      (dockerCommands.startContainer as jest.Mock).mockResolvedValue(undefined);
+      (dockerCommands.stopContainer as jest.Mock).mockResolvedValue(undefined);
+      (dockerCommands.restartContainer as jest.Mock).mockResolvedValue(undefined);
+      (dockerCommands.containerStatus as jest.Mock).mockResolvedValue(undefined);
+      (dockerCommands.showDockerHelp as jest.Mock).mockReturnValue(undefined);
+    });
+
+    test('should handle docker:start command', async () => {
+      await cli.run(['docker:start', '--api-key=test']);
+      
+      expect(dockerCommands.startContainer).toHaveBeenCalledWith(['--api-key=test']);
+    });
+
+    test('should handle docker:stop command', async () => {
+      await cli.run(['docker:stop']);
+      
+      expect(dockerCommands.stopContainer).toHaveBeenCalledWith([]);
+    });
+
+    test('should handle docker:restart command', async () => {
+      await cli.run(['docker:restart', '--port=8080']);
+      
+      expect(dockerCommands.restartContainer).toHaveBeenCalledWith(['--port=8080']);
+    });
+
+    test('should handle docker:status command', async () => {
+      await cli.run(['docker:status']);
+      
+      expect(dockerCommands.containerStatus).toHaveBeenCalledWith([]);
+    });
+
+    test('should handle docker:help command', async () => {
+      await cli.run(['docker:help']);
+      
+      expect(dockerCommands.showDockerHelp).toHaveBeenCalled();
+    });
+
+    test('should show docker help for unknown docker command', async () => {
+      await cli.run(['docker:unknown']);
+      
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Unknown command: docker:unknown');
+      expect(consoleLogSpy).toHaveBeenCalledWith('n8n Workflow Manager CLI');
     });
   });
 });

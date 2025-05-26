@@ -15,7 +15,7 @@ import { DockerContainerConfig, ContainerStatus, DockerManager } from './interfa
 export class N8nDockerManager implements DockerManager {
   private config: DockerContainerConfig;
   private dockerComposeFile: string;
-  private serviceName = 'n8n-unlicensed'; // Service name from docker-compose.yml
+  private serviceName = 'n8n'; // Service name from docker-compose.yml
 
   /**
    * Create a new Docker manager
@@ -27,7 +27,7 @@ export class N8nDockerManager implements DockerManager {
 
     // Set default configuration
     this.config = {
-      containerName: 'n8n-unlicensed',  // Match docker-compose.yml
+      containerName: 'n8n-tdd-framework',  // Match docker-compose.yml
       port: 5678,
       healthCheckTimeout: 60,
       env: {},

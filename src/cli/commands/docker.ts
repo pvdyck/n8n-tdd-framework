@@ -16,7 +16,7 @@ export function parseDockerArgs(args: string[]): DockerContainerConfig {
   // Default configuration aligned with docker-compose.yml
   const config: DockerContainerConfig = {
     apiKey: process.env.N8N_API_KEY || '',
-    containerName: 'n8n-unlicensed',  // Fixed to match docker-compose.yml
+    containerName: 'n8n-tdd-framework',  // Fixed to match docker-compose.yml
     port: process.env.N8N_PORT || 5678,
     healthCheckTimeout: 60,
     env: {}
